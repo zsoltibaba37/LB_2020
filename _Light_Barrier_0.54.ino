@@ -1,5 +1,7 @@
 /* MCP2308 Input and output test
 
+   v0.58  - Display Design
+   v0.57  - Analog Turn Off First and Third Line TEST
    v0.56  - Analog turn off sense
    v0.55  - Tested with Mega and mcp1, button work only sensState = 0, analogRead A0
    v0.54  - Program Structure
@@ -13,7 +15,7 @@
    v0.1   - Laser Working, Pushbutton working, RGB Led working -> Red: Light barrier=ON Green: Light barrier=OFF
 */
 
-float version = 0.56;
+float version = 0.58;
 
 // Analog Smooth
 #include "AnalogPin.h"
@@ -95,14 +97,14 @@ unsigned int sensState = 0;
 #define gripperRelay 26                // Allways On except on error - Gripper
 unsigned long previousMillis = 0;     // will store last time LED was updated
 long OnTime = 200;                    // milliseconds of on-time
-long OffTime = 800;                   // milliseconds of off-time
+long OffTime = 1000 - OnTime;         // milliseconds of off-time
 int relayState = LOW;                 // The Pause relay State
 
 // Analog In
 //#define anaRobot A0                 // Reads the analog input every 250 milliseconds
 AnalogPin INA(A0);
-unsigned long prevMillis = 0;     // will store last time LED was updated
-long measureTime = 5;           // milliseconds of on-time 10mS
+unsigned long prevMillis = 0;     // will store last time
+long measureTime = 10;           // milliseconds measure time
 unsigned int valueRobot;          // Raw analog
 unsigned int sensOff1 = 0;         // 1 gate turn off
 unsigned int sensOff2 = 0;         // 2 gate turn off
@@ -150,13 +152,16 @@ long time1 = 0;             // the last time the output pin was toggled
 void setup() {
   // TFT
   tft.begin();
-  tft.fillScreen();
+  tft.clearScreen();
+  //tft.fillScreen();
+  tft.drawRect(3,3,125,125,WHITE);
   tft.setTextColor(WHITE);
   tft.setTextSize(1);
   tft.setCursor(28, 50);
   tft.println("Laser Barrier");
-  tft.setCursor(33, 62);
-  tft.println("Test v" + String(version));
+  tft.setTextColor(GREEN);
+  tft.setCursor(50, 62);
+  tft.println("v" + String(version));
 
   //  Serial.begin(115200);
   Serial.begin(115200);
@@ -223,8 +228,8 @@ void loop() {
   if (error == 0 && sensState == 0) {
     sensState = sensSW();
     changeOutMega(buttonN, laserN);
-    // changeOutMcp0(button, laser);
-    //changeOutMcp1(button, laser);
+    //    changeOutMcp0(button, laser);
+    //    changeOutMcp1(button, laser);
   }
   else if (error == 0 && sensState == 1) {
     offSens();
@@ -238,15 +243,15 @@ void loop() {
     //    {
     //      sensMcp0();
     //    }
-    //    if (sensOff2 != 1)
+    //    if (sensOff3 != 1)
     //    {
     //      sensMcp1();
     //    }
 
-
     digitalWrite(pauseRelay, LOW);
     digitalWrite(contRelay, HIGH);
     digitalWrite(gripperRelay, HIGH);
+
   }
 
   if (error == 1) {
@@ -255,13 +260,53 @@ void loop() {
       sensState = sensSW();
       changeOutMega(buttonN, laserN);
       //    changeOutMcp0(button, laser);
-      //changeOutMcp1(button, laser);
+      //      changeOutMcp1(button, laser);
     }
   }
 
 }
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
+
+// ------------------- VOID Button Mega -------------------
+void changeOutMega(int inPort, int outPort) {
+  readingN = !digitalRead(inPort);
+  if (readingN == HIGH && previousN == LOW && millis() - timeN > debounce) {
+    if (stateN == LOW)
+      stateN = HIGH;
+    else
+      stateN = LOW;
+    timeN = millis();
+  }
+  digitalWrite(outPort, stateN);
+  previousN = readingN;
+  error = 0;
+
+
+  if (stateN == HIGH) {
+    digitalWrite(greenLedNO, LOW);
+    digitalWrite(redLedNO, HIGH);
+    mcp0.digitalWrite(greenLedI, LOW);
+    mcp0.digitalWrite(redLedI, HIGH);
+  }
+  if (stateN == LOW) {
+    digitalWrite(redLedNO, LOW);
+    digitalWrite(greenLedNO, HIGH);
+    mcp0.digitalWrite(redLedI, LOW);
+    mcp0.digitalWrite(greenLedI, HIGH);
+  }
+
+
+  //  laserSensN = digitalRead(photoDiodeN);
+  //  if (laserSensN == 1 ) {
+  //    digitalWrite(laserN, LOW);
+  //    readingN = LOW;
+  //    previousN = LOW;
+  //    stateN = LOW;
+  //    errorState = 1;
+  //    error = 1;
+  //  }
+}
 
 // ------------------- VOID Button mcp0 -------------------
 void changeOutMcp0(int inPort, int outPort) {
@@ -276,6 +321,7 @@ void changeOutMcp0(int inPort, int outPort) {
   }
   mcp0.digitalWrite(outPort, state);
   previous = reading;
+  error = 0;
 
   if (state == HIGH) {
     mcp0.digitalWrite(greenLedO, LOW);
@@ -316,6 +362,7 @@ void changeOutMcp1(int inPort, int outPort) {
   }
   mcp1.digitalWrite(outPort, state1);
   previous1 = reading1;
+  error = 0;
 
   if (state1 == HIGH) {
     mcp1.digitalWrite(greenLedO, LOW);
@@ -342,44 +389,6 @@ void changeOutMcp1(int inPort, int outPort) {
   //  }
 }
 
-// ------------------- VOID Button Mega -------------------
-void changeOutMega(int inPort, int outPort) {
-  readingN = !digitalRead(inPort);
-  if (readingN == HIGH && previousN == LOW && millis() - timeN > debounce) {
-    if (stateN == LOW)
-      stateN = HIGH;
-    else
-      stateN = LOW;
-    timeN = millis();
-  }
-  digitalWrite(outPort, stateN);
-  previousN = readingN;
-  error = 0;
-
-  if (stateN == HIGH) {
-    digitalWrite(greenLedNO, LOW);
-    digitalWrite(redLedNO, HIGH);
-    mcp0.digitalWrite(greenLedI, LOW);
-    mcp0.digitalWrite(redLedI, HIGH);
-  }
-  if (stateN == LOW) {
-    digitalWrite(redLedNO, LOW);
-    digitalWrite(greenLedNO, HIGH);
-    mcp0.digitalWrite(redLedI, LOW);
-    mcp0.digitalWrite(greenLedI, HIGH);
-  }
-
-
-  //  laserSensN = digitalRead(photoDiodeN);
-  //  if (laserSensN == 1 ) {
-  //    digitalWrite(laserN, LOW);
-  //    readingN = LOW;
-  //    previousN = LOW;
-  //    stateN = LOW;
-  //    errorState = 1;
-  //    error = 1;
-  //  }
-}
 
 // -------------------- Sens Mega --------------------
 void sensMega() {
@@ -392,9 +401,17 @@ void sensMega() {
     error = 1;
     sensState = 0;
     sens = 0;
-    tft.fillScreen();
-    tft.setCursor(10, 50);
-    tft.println("First line crossed");
+    tft.clearScreen();
+    //tft.fillScreen();
+    tft.drawRect(3,3,125,125,BLUE);
+    tft.setTextSize(1);
+    tft.setTextColor(WHITE);
+    tft.setCursor(25, 50);
+    tft.println("First line was");
+    tft.setTextSize(2);
+    tft.setTextColor(BLUE);
+    tft.setCursor(24, 65);
+    tft.println("crossed");    
   }
 }
 
@@ -409,6 +426,17 @@ void sensMcp0() {
     error = 1;
     sensState = 0;
     sens = 0;
+    tft.clearScreen();
+    //tft.fillScreen();
+    tft.drawRect(3,3,125,125,BLUE);    
+    tft.setTextSize(1);
+    tft.setTextColor(WHITE);
+    tft.setCursor(22, 50);
+    tft.println("Second line was");
+    tft.setTextSize(2);
+    tft.setTextColor(BLUE);
+    tft.setCursor(24, 65);
+    tft.println("crossed");   
   }
 }
 
@@ -423,9 +451,17 @@ void sensMcp1() {
     error = 1;
     sensState = 0;
     sens = 0;
-    tft.fillScreen();
-    tft.setCursor(8, 50);
-    tft.println("Second line crossed");
+    tft.clearScreen();
+    //tft.fillScreen();
+    tft.drawRect(3,3,125,125,BLUE);    
+    tft.setTextSize(1);
+    tft.setTextColor(WHITE);
+    tft.setCursor(25, 50);
+    tft.println("Third line was");
+    tft.setTextSize(2);
+    tft.setTextColor(BLUE);
+    tft.setCursor(24, 65);
+    tft.println("crossed"); 
   }
 }
 
@@ -436,6 +472,17 @@ int sensSW() {
   if (pinSWLast == true ) {
     if (swVal == LOW) {
       ++sens;
+      tft.clearScreen();
+      //tft.fillScreen();
+      tft.drawRect(3,3,125,125,RED);
+      tft.setTextSize(1);
+      tft.setTextColor(WHITE);
+      tft.setCursor(28, 40);
+      tft.println("Laser Barrier");
+      tft.setCursor(12, 65);
+      tft.setTextSize(2);
+      tft.setTextColor(RED);
+      tft.println("ACTIVATED");
       if (sens >= 1)
         sens = 1;
       pinSWLast = false;
@@ -459,68 +506,79 @@ void pauseRobot() {
     relayState = LOW;                       // Turn it off
     previousMillis = currentMillis;       // Remember the time
     digitalWrite(pauseRelay, relayState);   // Update the actual Relay
+    tft.fillRect(60,5,8,8,BLACK);
   }
   else if ((relayState == LOW) && (currentMillis - previousMillis >= OffTime))
   {
     relayState = HIGH;                      // turn it on
     previousMillis = currentMillis;       // Remember the time
     digitalWrite(pauseRelay, relayState);   // Update the actual Relay
+    tft.fillRect(60,5,8,8,BLUE);
   }
 }
 
 // -------------------- Analog in From Robot --------------------
 int offSens() {
   unsigned long currentMillis = millis();
-  if ((currentMillis - prevMillis >= measureTime))
+  if ( currentMillis - prevMillis >= measureTime )
   {
     prevMillis = currentMillis; // Remember the time
+
     //INA.setPrescaler(5);
     INA.setNoiseThreshold(60);
     valueRobot = INA.read();
-    //valueRobot = analogRead(anaRobot);   // Update the actual Relay
     //Serial.println(valueRobot);
 
+
     // 102.3
-    if ( valueRobot >= 73 && valueRobot <= 143 )
+    if ( valueRobot >= 82 && valueRobot <= 123 )
     {
       sensOff1 = 1;
       digitalWrite(greenLedNO, HIGH);
-      //Serial.println("sensOff1 State: " + String(sensOff1));
+      tft.fillRect(20,5,8,8,GREEN);
+        
+      //Serial.println(valueRobot);
     }
 
     // 205
     else if ( valueRobot >= 185 && valueRobot <= 225 )
     {
       sensOff2 = 1;
-      //Serial.println("sensOff2 State: " + String(sensOff2));
+      mcp0.digitalWrite(greenLedO, HIGH);
+      tft.fillRect(40,5,8,8,GREEN);
     }
 
     // 307
     else if ( valueRobot >= 287 && valueRobot <= 327 )
     {
       sensOff3 = 1;
-      //Serial.println("sensOff3 State: " + String(sensOff3));
+      mcp1.digitalWrite(greenLedO, HIGH);
+      tft.fillRect(60,5,8,8,GREEN);
     }
 
     // 409
     else if ( valueRobot >= 389 && valueRobot <= 429 )
     {
       sensOff4 = 1;
-      //Serial.println("sensOff4 State: " + String(sensOff4));
+
     }
 
     else
     {
       sensOff1 = 0;
-      sensOff2 = 0;
-      sensOff3 = 0;
-      sensOff4 = 0;
       digitalWrite(greenLedNO, LOW);
-      //Serial.println("All State: 0");
+      tft.fillRect(20,5,8,8,BLACK);
+      sensOff2 = 0;
+      mcp0.digitalWrite(greenLedO, LOW);
+      tft.fillRect(40,5,8,8,BLACK);
+      sensOff3 = 0;
+      mcp1.digitalWrite(greenLedO, LOW);
+      tft.fillRect(60,5,8,8,BLACK);
+      sensOff4 = 0;
     }
   }
-
 }
+
 
 
 // -------------------- Rotary ENC A and B ---------------------
