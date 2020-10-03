@@ -1,5 +1,6 @@
-/* MCP2308 Input and output test
+/* Laser Barrier - For Cobot
 
+   v.059  - Check Mega and mcp0-1-2  PCBs
    v0.58  - Display Design
    v0.57  - Analog Turn Off First and Third Line TEST
    v0.56  - Analog turn off sense
@@ -15,7 +16,7 @@
    v0.1   - Laser Working, Pushbutton working, RGB Led working -> Red: Light barrier=ON Green: Light barrier=OFF
 */
 
-float version = 0.58;
+float version = 0.59;
 
 // Analog Smooth
 #include "AnalogPin.h"
@@ -26,6 +27,7 @@ float version = 0.58;
 
 Adafruit_MCP23008 mcp0;         // Create mpc instance
 Adafruit_MCP23008 mcp1;         // Create mpc instance
+Adafruit_MCP23008 mcp2;         // Create mpc instance
 
 //char *mcpNames[] = {"mcp0", "mcp1", "mcp2"};
 //unsigned int mcpNumber = 2;
@@ -125,6 +127,10 @@ unsigned int laserSens;        // Photo Diode Value 1 or 0
 
 unsigned int laserSens1;        // Photo Diode Value 1 or 0
 
+// ---------- mcp2 ----------
+
+unsigned int laserSens2;        // Photo Diode Value 1 or 0
+
 // ---------- Button Mega ----------
 int stateN = LOW;           // the current state of the output pin
 int readingN;               // the current reading from the input pin
@@ -147,6 +153,12 @@ int previous1 = HIGH;       // the previous reading from the input pin
 long time1 = 0;             // the last time the output pin was toggled
 //long debounce1 = 200;       // old 200
 
+// ---------- Button mcp2 ----------
+int state2 = LOW;           // the current state of the output pin
+int reading2;               // the current reading from the input pin
+int previous2 = HIGH;       // the previous reading from the input pin
+long time2 = 0;             // the last time the output pin was toggled
+//long debounce1 = 200;       // old 200
 
 // ---------- SETUP ----------
 void setup() {
@@ -154,7 +166,7 @@ void setup() {
   tft.begin();
   tft.clearScreen();
   //tft.fillScreen();
-  tft.drawRect(3,3,125,125,WHITE);
+  tft.drawRect(3, 3, 125, 125, WHITE);
   tft.setTextColor(WHITE);
   tft.setTextSize(1);
   tft.setCursor(28, 50);
@@ -188,7 +200,6 @@ void setup() {
   pinMode(gripperRelay, OUTPUT);   // Allways On except on error
   //digitalWrite(gripperRelay, HIGH);
 
-  //  pinMode(anaRobot, INPUT);       //
 
   // ------------------------------------------------------------
 
@@ -214,6 +225,17 @@ void setup() {
   mcp1.pinMode(redLedI, OUTPUT);
   mcp1.pinMode(greenLedI, OUTPUT);
 
+  // mcp2
+  mcp2.begin(2);           // 1 = 0x22
+  mcp2.pinMode(button, INPUT);
+  mcp2.pullUp(button, HIGH);
+  mcp2.pinMode(laser, OUTPUT);
+  mcp2.pinMode(redLedO, OUTPUT);
+  mcp2.pinMode(greenLedO, OUTPUT);
+  mcp2.pinMode(photoDiode, INPUT);
+  mcp2.pinMode(redLedI, OUTPUT);
+  mcp2.pinMode(greenLedI, OUTPUT);
+
   // Print Program Version
   Serial.println("Laser Barrier");
   Serial.println("Test v" + String(version));
@@ -228,8 +250,9 @@ void loop() {
   if (error == 0 && sensState == 0) {
     sensState = sensSW();
     changeOutMega(buttonN, laserN);
-    //    changeOutMcp0(button, laser);
-    //    changeOutMcp1(button, laser);
+    changeOutMcp0(button, laser);
+    changeOutMcp1(button, laser);
+    changeOutMcp2(button, laser);
   }
   else if (error == 0 && sensState == 1) {
     offSens();
@@ -239,14 +262,18 @@ void loop() {
     {
       sensMega();
     }
-    //    if (sensOff2 != 1)
-    //    {
-    //      sensMcp0();
-    //    }
-    //    if (sensOff3 != 1)
-    //    {
-    //      sensMcp1();
-    //    }
+    if (sensOff2 != 1)
+    {
+      sensMcp0();
+    }
+    if (sensOff3 != 1)
+    {
+      sensMcp1();
+    }
+    if (sensOff4 != 1)
+    {
+      sensMcp2();
+    }
 
     digitalWrite(pauseRelay, LOW);
     digitalWrite(contRelay, HIGH);
@@ -259,8 +286,9 @@ void loop() {
       pauseRobot();
       sensState = sensSW();
       changeOutMega(buttonN, laserN);
-      //    changeOutMcp0(button, laser);
-      //      changeOutMcp1(button, laser);
+      changeOutMcp0(button, laser);
+      changeOutMcp1(button, laser);
+      changeOutMcp2(button, laser);
     }
   }
 
@@ -336,7 +364,6 @@ void changeOutMcp0(int inPort, int outPort) {
     mcp1.digitalWrite(greenLedI, HIGH);
 
   }
-
   // Sens of
   //  laserSens = mcp0.digitalRead(photoDiode);
   //  if (laserSens == 1 ) {
@@ -367,14 +394,14 @@ void changeOutMcp1(int inPort, int outPort) {
   if (state1 == HIGH) {
     mcp1.digitalWrite(greenLedO, LOW);
     mcp1.digitalWrite(redLedO, HIGH);
-    digitalWrite(greenLedNI, LOW);
-    digitalWrite(redLedNI, HIGH);
+    mcp2.digitalWrite(greenLedI, LOW);
+    mcp2.digitalWrite(redLedI, HIGH);
   }
   if (state1 == LOW) {
     mcp1.digitalWrite(redLedO, LOW);
     mcp1.digitalWrite(greenLedO, HIGH);
-    digitalWrite(redLedNI, LOW);
-    digitalWrite(greenLedNI, HIGH);
+    mcp2.digitalWrite(redLedI, LOW);
+    mcp2.digitalWrite(greenLedI, HIGH);
   }
 
   // Sens in
@@ -389,6 +416,45 @@ void changeOutMcp1(int inPort, int outPort) {
   //  }
 }
 
+// ------------------- VOID Button mcp2 -------------------
+void changeOutMcp2(int inPort, int outPort) {
+  reading2 = !mcp2.digitalRead(inPort);
+
+  if (reading2 == HIGH && previous2 == LOW && millis() - time2 > debounce) {
+    if (state2 == LOW)
+      state2 = HIGH;
+    else
+      state2 = LOW;
+    time2 = millis();
+  }
+  mcp2.digitalWrite(outPort, state2);
+  previous2 = reading2;
+  error = 0;
+
+  if (state2 == HIGH) {
+    mcp2.digitalWrite(greenLedO, LOW);
+    mcp2.digitalWrite(redLedO, HIGH);
+    digitalWrite(greenLedNI, LOW);
+    digitalWrite(redLedNI, HIGH);
+  }
+  if (state2 == LOW) {
+    mcp2.digitalWrite(redLedO, LOW);
+    mcp2.digitalWrite(greenLedO, HIGH);
+    digitalWrite(redLedNI, LOW);
+    digitalWrite(greenLedNI, HIGH);
+  }
+
+  // Sens in
+  //  laserSens2 = mcp2.digitalRead(photoDiode);
+  //  if (laserSens2 == 1 ) {
+  //    mcp2.digitalWrite(laser, LOW);
+  //    reading2 = LOW;
+  //    previous2 = LOW;
+  //    state2 = LOW;
+  //    errorState = 1;
+  //    error = 1;
+  //  }
+}
 
 // -------------------- Sens Mega --------------------
 void sensMega() {
@@ -403,21 +469,22 @@ void sensMega() {
     sens = 0;
     tft.clearScreen();
     //tft.fillScreen();
-    tft.drawRect(3,3,125,125,BLUE);
+    tft.drawRect(3, 3, 125, 125, BLUE);
     tft.setTextSize(1);
     tft.setTextColor(WHITE);
-    tft.setCursor(25, 50);
-    tft.println("First line was");
+    tft.setCursor(22, 50);
+    tft.println("Fourth line was");
     tft.setTextSize(2);
     tft.setTextColor(BLUE);
     tft.setCursor(24, 65);
-    tft.println("crossed");    
+    tft.println("crossed");
   }
 }
 
 // -------------------- Sens Mcp0 --------------------
 void sensMcp0() {
   laserSens = mcp0.digitalRead(photoDiode);
+  Serial.println(laserSens);
   if (laserSens == 1 ) {
     mcp0.digitalWrite(laser, LOW);
     reading = LOW;
@@ -428,15 +495,15 @@ void sensMcp0() {
     sens = 0;
     tft.clearScreen();
     //tft.fillScreen();
-    tft.drawRect(3,3,125,125,BLUE);    
+    tft.drawRect(3, 3, 125, 125, BLUE);
     tft.setTextSize(1);
     tft.setTextColor(WHITE);
-    tft.setCursor(22, 50);
-    tft.println("Second line was");
+    tft.setCursor(25, 50);
+    tft.println("First line was");
     tft.setTextSize(2);
     tft.setTextColor(BLUE);
     tft.setCursor(24, 65);
-    tft.println("crossed");   
+    tft.println("crossed");
   }
 }
 
@@ -453,7 +520,32 @@ void sensMcp1() {
     sens = 0;
     tft.clearScreen();
     //tft.fillScreen();
-    tft.drawRect(3,3,125,125,BLUE);    
+    tft.drawRect(3, 3, 125, 125, BLUE);
+    tft.setTextSize(1);
+    tft.setTextColor(WHITE);
+    tft.setCursor(22, 50);
+    tft.println("Second line was");
+    tft.setTextSize(2);
+    tft.setTextColor(BLUE);
+    tft.setCursor(24, 65);
+    tft.println("crossed");
+  }
+}
+
+// -------------------- Sens Mcp2 --------------------
+void sensMcp2() {
+  laserSens2 = mcp2.digitalRead(photoDiode);
+  if (laserSens2 == 1 ) {
+    mcp2.digitalWrite(laser, LOW);
+    reading2 = LOW;
+    previous2 = LOW;
+    state2 = LOW;
+    error = 1;
+    sensState = 0;
+    sens = 0;
+    tft.clearScreen();
+    //tft.fillScreen();
+    tft.drawRect(3, 3, 125, 125, BLUE);
     tft.setTextSize(1);
     tft.setTextColor(WHITE);
     tft.setCursor(25, 50);
@@ -461,7 +553,7 @@ void sensMcp1() {
     tft.setTextSize(2);
     tft.setTextColor(BLUE);
     tft.setCursor(24, 65);
-    tft.println("crossed"); 
+    tft.println("crossed");
   }
 }
 
@@ -474,7 +566,7 @@ int sensSW() {
       ++sens;
       tft.clearScreen();
       //tft.fillScreen();
-      tft.drawRect(3,3,125,125,RED);
+      tft.drawRect(3, 3, 125, 125, RED);
       tft.setTextSize(1);
       tft.setTextColor(WHITE);
       tft.setCursor(28, 40);
@@ -506,14 +598,14 @@ void pauseRobot() {
     relayState = LOW;                       // Turn it off
     previousMillis = currentMillis;       // Remember the time
     digitalWrite(pauseRelay, relayState);   // Update the actual Relay
-    tft.fillRect(60,5,8,8,BLACK);
+    tft.fillRect(60, 5, 8, 8, BLACK);
   }
   else if ((relayState == LOW) && (currentMillis - previousMillis >= OffTime))
   {
     relayState = HIGH;                      // turn it on
     previousMillis = currentMillis;       // Remember the time
     digitalWrite(pauseRelay, relayState);   // Update the actual Relay
-    tft.fillRect(60,5,8,8,BLUE);
+    tft.fillRect(60, 5, 8, 8, BLUE);
   }
 }
 
@@ -535,8 +627,8 @@ int offSens() {
     {
       sensOff1 = 1;
       digitalWrite(greenLedNO, HIGH);
-      tft.fillRect(20,5,8,8,GREEN);
-        
+      tft.fillRect(20, 5, 8, 8, GREEN);
+
       //Serial.println(valueRobot);
     }
 
@@ -545,7 +637,7 @@ int offSens() {
     {
       sensOff2 = 1;
       mcp0.digitalWrite(greenLedO, HIGH);
-      tft.fillRect(40,5,8,8,GREEN);
+      tft.fillRect(40, 5, 8, 8, GREEN);
     }
 
     // 307
@@ -553,28 +645,31 @@ int offSens() {
     {
       sensOff3 = 1;
       mcp1.digitalWrite(greenLedO, HIGH);
-      tft.fillRect(60,5,8,8,GREEN);
+      tft.fillRect(60, 5, 8, 8, GREEN);
     }
 
     // 409
     else if ( valueRobot >= 389 && valueRobot <= 429 )
     {
       sensOff4 = 1;
-
+      mcp2.digitalWrite(greenLedO, HIGH);
+      tft.fillRect(80, 5, 8, 8, GREEN);
     }
 
     else
     {
       sensOff1 = 0;
       digitalWrite(greenLedNO, LOW);
-      tft.fillRect(20,5,8,8,BLACK);
+      tft.fillRect(20, 5, 8, 8, BLACK);
       sensOff2 = 0;
       mcp0.digitalWrite(greenLedO, LOW);
-      tft.fillRect(40,5,8,8,BLACK);
+      tft.fillRect(40, 5, 8, 8, BLACK);
       sensOff3 = 0;
       mcp1.digitalWrite(greenLedO, LOW);
-      tft.fillRect(60,5,8,8,BLACK);
+      tft.fillRect(60, 5, 8, 8, BLACK);
       sensOff4 = 0;
+      mcp2.digitalWrite(greenLedO, LOW);
+      tft.fillRect(80, 5, 8, 8, BLACK);
     }
   }
 }
