@@ -87,7 +87,7 @@ int previousSW = HIGH;       // the previous reading from the input pin
 long timeSW = 0;             // the last time the output pin was toggled
 
 // Error State 0 = No Error  1 = Error
-unsigned int error = 1;
+unsigned int error = 0;
 
 // Sens State  0 = Sens Off  1 = Sense
 unsigned int sens = 0;
@@ -164,6 +164,7 @@ long time2 = 0;             // the last time the output pin was toggled
 void setup() {
   // TFT
   tft.begin();
+  tft.setRotation(3);
   tft.clearScreen();
   //tft.fillScreen();
   tft.drawRect(3, 3, 125, 125, WHITE);
@@ -253,6 +254,21 @@ void loop() {
     changeOutMcp0(button, laser);
     changeOutMcp1(button, laser);
     changeOutMcp2(button, laser);
+
+    // ------------- Check Photo Diodes -------------------
+//    laserSensN = digitalRead(photoDiodeN);
+//    Serial.println("Mega: " + String(laserSensN));
+//    delay(250);
+//    laserSens = mcp0.digitalRead(photoDiode);
+//    Serial.println("mcp0: " + String(laserSens));
+//    delay(250);
+//    laserSens1 = mcp1.digitalRead(photoDiode);
+//    Serial.println("mcp1: " + String(laserSens1));
+//    delay(250);
+//    laserSens2 = mcp2.digitalRead(photoDiode);
+//    Serial.println("mcp2: " + String(laserSens2));
+//    delay(250);
+    // ----------------------------------------------------
   }
   else if (error == 0 && sensState == 1) {
     offSens();
@@ -289,6 +305,21 @@ void loop() {
       changeOutMcp0(button, laser);
       changeOutMcp1(button, laser);
       changeOutMcp2(button, laser);
+
+      // ------------- Check Photo Diodes -------------------
+//      laserSensN = digitalRead(photoDiodeN);
+//      Serial.println("Mega: " + String(laserSensN));
+//      delay(250);
+//      laserSens = mcp0.digitalRead(photoDiode);
+//      Serial.println("mcp0: " + String(laserSens));
+//      delay(250);
+//      laserSens1 = mcp1.digitalRead(photoDiode);
+//      Serial.println("mcp1: " + String(laserSens1));
+//      delay(250);
+//      laserSens2 = mcp2.digitalRead(photoDiode);
+//      Serial.println("mcp2: " + String(laserSens2));
+//      delay(250);
+      // ----------------------------------------------------
     }
   }
 
