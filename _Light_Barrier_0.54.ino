@@ -1,5 +1,6 @@
 /* Laser Barrier - For Cobot
 
+   v.060  - Hardware reay and tested.
    v.059  - Check Mega and mcp0-1-2  PCBs
    v0.58  - Display Design
    v0.57  - Analog Turn Off First and Third Line TEST
@@ -16,7 +17,7 @@
    v0.1   - Laser Working, Pushbutton working, RGB Led working -> Red: Light barrier=ON Green: Light barrier=OFF
 */
 
-float version = 0.59;
+float version = 0.60;
 
 // Analog Smooth
 #include "AnalogPin.h"
@@ -256,18 +257,18 @@ void loop() {
     changeOutMcp2(button, laser);
 
     // ------------- Check Photo Diodes -------------------
-//    laserSensN = digitalRead(photoDiodeN);
-//    Serial.println("Mega: " + String(laserSensN));
-//    delay(250);
-//    laserSens = mcp0.digitalRead(photoDiode);
-//    Serial.println("mcp0: " + String(laserSens));
-//    delay(250);
-//    laserSens1 = mcp1.digitalRead(photoDiode);
-//    Serial.println("mcp1: " + String(laserSens1));
-//    delay(250);
-//    laserSens2 = mcp2.digitalRead(photoDiode);
-//    Serial.println("mcp2: " + String(laserSens2));
-//    delay(250);
+//        laserSensN = digitalRead(photoDiodeN);
+//        Serial.println("Mega: " + String(laserSensN));
+//        delay(250);
+//        laserSens = mcp0.digitalRead(photoDiode);
+//        Serial.println("mcp0: " + String(laserSens));
+//        delay(250);
+//        laserSens1 = mcp1.digitalRead(photoDiode);
+//        Serial.println("mcp1: " + String(laserSens1));
+//        delay(250);
+//        laserSens2 = mcp2.digitalRead(photoDiode);
+//        Serial.println("mcp2: " + String(laserSens2));
+//        delay(250);
     // ----------------------------------------------------
   }
   else if (error == 0 && sensState == 1) {
@@ -276,19 +277,19 @@ void loop() {
     // If 1 turn off sens
     if (sensOff1 != 1)
     {
-      sensMega();
+      sensMcp0();
     }
     if (sensOff2 != 1)
     {
-      sensMcp0();
+      sensMcp1();
     }
     if (sensOff3 != 1)
     {
-      sensMcp1();
+      sensMcp2();
     }
     if (sensOff4 != 1)
     {
-      sensMcp2();
+      sensMega();
     }
 
     digitalWrite(pauseRelay, LOW);
@@ -307,18 +308,18 @@ void loop() {
       changeOutMcp2(button, laser);
 
       // ------------- Check Photo Diodes -------------------
-//      laserSensN = digitalRead(photoDiodeN);
-//      Serial.println("Mega: " + String(laserSensN));
-//      delay(250);
-//      laserSens = mcp0.digitalRead(photoDiode);
-//      Serial.println("mcp0: " + String(laserSens));
-//      delay(250);
-//      laserSens1 = mcp1.digitalRead(photoDiode);
-//      Serial.println("mcp1: " + String(laserSens1));
-//      delay(250);
-//      laserSens2 = mcp2.digitalRead(photoDiode);
-//      Serial.println("mcp2: " + String(laserSens2));
-//      delay(250);
+      //      laserSensN = digitalRead(photoDiodeN);
+      //      Serial.println("Mega: " + String(laserSensN));
+      //      delay(250);
+      //      laserSens = mcp0.digitalRead(photoDiode);
+      //      Serial.println("mcp0: " + String(laserSens));
+      //      delay(250);
+      //      laserSens1 = mcp1.digitalRead(photoDiode);
+      //      Serial.println("mcp1: " + String(laserSens1));
+      //      delay(250);
+      //      laserSens2 = mcp2.digitalRead(photoDiode);
+      //      Serial.println("mcp2: " + String(laserSens2));
+      //      delay(250);
       // ----------------------------------------------------
     }
   }
@@ -356,15 +357,17 @@ void changeOutMega(int inPort, int outPort) {
   }
 
 
-  //  laserSensN = digitalRead(photoDiodeN);
-  //  if (laserSensN == 1 ) {
-  //    digitalWrite(laserN, LOW);
-  //    readingN = LOW;
-  //    previousN = LOW;
-  //    stateN = LOW;
-  //    errorState = 1;
-  //    error = 1;
-  //  }
+
+//  laserSens = mcp0.digitalRead(photoDiode);
+//  if (laserSens == 1 ) {
+//    digitalWrite(laserN, LOW);
+//    readingN = LOW;
+//    previousN = LOW;
+//    stateN = LOW;
+//    //    errorState = 1;
+//    //    error = 1;
+//  }
+
 }
 
 // ------------------- VOID Button mcp0 -------------------
@@ -395,16 +398,17 @@ void changeOutMcp0(int inPort, int outPort) {
     mcp1.digitalWrite(greenLedI, HIGH);
 
   }
-  // Sens of
-  //  laserSens = mcp0.digitalRead(photoDiode);
-  //  if (laserSens == 1 ) {
-  //    mcp0.digitalWrite(laser, LOW);
-  //    reading = LOW;
-  //    previous = LOW;
-  //    state = LOW;
-  //    errorState = 1;
-  //    error = 1;
-  //  }
+
+//  laserSens1 = mcp1.digitalRead(photoDiode);
+//  if (laserSens1 == 1 ) {
+//    mcp0.digitalWrite(laser, LOW);
+//    reading = LOW;
+//    previous = LOW;
+//    state = LOW;
+//    //    errorState = 1;
+//    //    error = 1;
+//  }
+
 }
 
 // ------------------- VOID Button mcp1 -------------------
@@ -435,16 +439,16 @@ void changeOutMcp1(int inPort, int outPort) {
     mcp2.digitalWrite(greenLedI, HIGH);
   }
 
-  // Sens in
-  //  laserSens1 = mcp1.digitalRead(photoDiode);
-  //  if (laserSens1 == 1 ) {
-  //    mcp1.digitalWrite(laser, LOW);
-  //    reading1 = LOW;
-  //    previous1 = LOW;
-  //    state1 = LOW;
-  //    errorState = 1;
-  //    error = 1;
-  //  }
+//  laserSens2 = mcp2.digitalRead(photoDiode);
+//  if (laserSens2 == 1 ) {
+//    mcp1.digitalWrite(laser, LOW);
+//    reading1 = LOW;
+//    previous1 = LOW;
+//    state1 = LOW;
+//    //    errorState = 1;
+//    //    error = 1;
+//  }
+  
 }
 
 // ------------------- VOID Button mcp2 -------------------
@@ -475,26 +479,25 @@ void changeOutMcp2(int inPort, int outPort) {
     digitalWrite(greenLedNI, HIGH);
   }
 
-  // Sens in
-  //  laserSens2 = mcp2.digitalRead(photoDiode);
-  //  if (laserSens2 == 1 ) {
-  //    mcp2.digitalWrite(laser, LOW);
-  //    reading2 = LOW;
-  //    previous2 = LOW;
-  //    state2 = LOW;
-  //    errorState = 1;
-  //    error = 1;
-  //  }
-}
+//  laserSensN = digitalRead(photoDiodeN);
+//  if (laserSensN == 1 ) {
+//    mcp2.digitalWrite(laser, LOW);
+//    reading2 = LOW;
+//    previous2 = LOW;
+//    state2 = LOW;
+//    //    errorState = 1;
+//    //    error = 1;
+//  }
 
+}
 // -------------------- Sens Mega --------------------
 void sensMega() {
   laserSensN = digitalRead(photoDiodeN);
   if (laserSensN == 1 ) {
-    digitalWrite(laserN, LOW);
-    readingN = LOW;
-    previousN = LOW;
-    stateN = LOW;
+    mcp2.digitalWrite(laser, LOW);
+    reading2 = LOW;
+    previous2 = LOW;
+    state2 = LOW;
     error = 1;
     sensState = 0;
     sens = 0;
@@ -517,10 +520,10 @@ void sensMcp0() {
   laserSens = mcp0.digitalRead(photoDiode);
   Serial.println(laserSens);
   if (laserSens == 1 ) {
-    mcp0.digitalWrite(laser, LOW);
-    reading = LOW;
-    previous = LOW;
-    state = LOW;
+    digitalWrite(laserN, LOW);
+    readingN = LOW;
+    previousN = LOW;
+    stateN = LOW;
     error = 1;
     sensState = 0;
     sens = 0;
@@ -542,10 +545,10 @@ void sensMcp0() {
 void sensMcp1() {
   laserSens1 = mcp1.digitalRead(photoDiode);
   if (laserSens1 == 1 ) {
-    mcp1.digitalWrite(laser, LOW);
-    reading1 = LOW;
-    previous1 = LOW;
-    state1 = LOW;
+    mcp0.digitalWrite(laser, LOW);
+    reading = LOW;
+    previous = LOW;
+    state = LOW;
     error = 1;
     sensState = 0;
     sens = 0;
@@ -567,10 +570,10 @@ void sensMcp1() {
 void sensMcp2() {
   laserSens2 = mcp2.digitalRead(photoDiode);
   if (laserSens2 == 1 ) {
-    mcp2.digitalWrite(laser, LOW);
-    reading2 = LOW;
-    previous2 = LOW;
-    state2 = LOW;
+    mcp1.digitalWrite(laser, LOW);
+    reading1 = LOW;
+    previous1 = LOW;
+    state1 = LOW;
     error = 1;
     sensState = 0;
     sens = 0;
