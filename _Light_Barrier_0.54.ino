@@ -1,6 +1,7 @@
 /* Laser Barrier - For Cobot
 
-   v.060  - Hardware reay and tested.
+   v0.61  - Main menu integrated. Activate 
+   v.060  - Hardware ready and tested.
    v.059  - Check Mega and mcp0-1-2  PCBs
    v0.58  - Display Design
    v0.57  - Analog Turn Off First and Third Line TEST
@@ -17,7 +18,7 @@
    v0.1   - Laser Working, Pushbutton working, RGB Led working -> Red: Light barrier=ON Green: Light barrier=OFF
 */
 
-float version = 0.60;
+float version = 0.61;
 
 // Analog Smooth
 #include "AnalogPin.h"
@@ -62,6 +63,16 @@ Adafruit_MCP23008 mcp2;         // Create mpc instance
 
 TFT_ILI9163C tft = TFT_ILI9163C(__CS, __DC, __RST);
 
+// -------- Language --------
+// EEPROM.write(addr, val);
+// value = EEPROM.read(address);
+
+#include <EEPROM.h>
+unsigned int langAddr = 0;
+int langValue; // 0 - 1 - 2
+String lang;
+//String lang1 = "HUN"
+//String lang2 = "DEU"
 
 // ---------- Mega ----------
 #define buttonN 2               // PushButton
@@ -80,7 +91,23 @@ const int pinSW = 11; // Connected to SW
 int pinALast;
 boolean pinSWLast;
 int aVal;
+int bVal;
 int swVal;
+//unsigned int a = 10;
+// ---------- Menu ----------
+int menuitem = 1;
+int frame = 1;
+int page = 1;
+int lastMenuItem = 1;
+
+String menuItem1Eng = "Activate";
+String menuItem2Eng = "Setup";
+String menuItem1Hun = "Aktiválás";
+String menuItem2Hun = "Beállítás";
+String menuItem1Deu = "Aktivierung";
+String menuItem2Deu = "Einstellung";
+
+
 // ---------- Sate pinSW ----------
 int stateSW = LOW;           // the current state of the output pin
 int readingSW;               // the current reading from the input pin
@@ -107,7 +134,7 @@ int relayState = LOW;                 // The Pause relay State
 //#define anaRobot A0                 // Reads the analog input every 250 milliseconds
 AnalogPin INA(A0);
 unsigned long prevMillis = 0;     // will store last time
-long measureTime = 10;           // milliseconds measure time
+long measureTime = 20;           // milliseconds measure time
 unsigned int valueRobot;          // Raw analog
 unsigned int sensOff1 = 0;         // 1 gate turn off
 unsigned int sensOff2 = 0;         // 2 gate turn off
@@ -163,11 +190,29 @@ long time2 = 0;             // the last time the output pin was toggled
 
 // ---------- SETUP ----------
 void setup() {
+  // -------- EEPROM Write once lang -------
+  //EEPROM.write(langAddr, 0);
+  //   0 - English    - ENG
+  //   1 - Hungarian  - HUN
+  //   2 - Deutsche   - DEU
+  langValue = EEPROM.read(langAddr);
+  if (langValue == 0)
+  {
+    lang = "ENG";
+  }
+  else if (langValue == 1)
+  {
+    lang = "HUN";
+  }
+  else if (langValue == 2)
+  {
+    lang = "DEU";
+  }
+
   // TFT
   tft.begin();
   tft.setRotation(3);
   tft.clearScreen();
-  //tft.fillScreen();
   tft.drawRect(3, 3, 125, 125, WHITE);
   tft.setTextColor(WHITE);
   tft.setTextSize(1);
@@ -176,6 +221,10 @@ void setup() {
   tft.setTextColor(GREEN);
   tft.setCursor(50, 62);
   tft.println("v" + String(version));
+  tft.setTextColor(WHITE);
+  tft.setCursor(55, 74);
+  tft.println(lang);
+
 
   //  Serial.begin(115200);
   Serial.begin(115200);
@@ -256,20 +305,9 @@ void loop() {
     changeOutMcp1(button, laser);
     changeOutMcp2(button, laser);
 
-    // ------------- Check Photo Diodes -------------------
-//        laserSensN = digitalRead(photoDiodeN);
-//        Serial.println("Mega: " + String(laserSensN));
-//        delay(250);
-//        laserSens = mcp0.digitalRead(photoDiode);
-//        Serial.println("mcp0: " + String(laserSens));
-//        delay(250);
-//        laserSens1 = mcp1.digitalRead(photoDiode);
-//        Serial.println("mcp1: " + String(laserSens1));
-//        delay(250);
-//        laserSens2 = mcp2.digitalRead(photoDiode);
-//        Serial.println("mcp2: " + String(laserSens2));
-//        delay(250);
-    // ----------------------------------------------------
+    // --- Main menu ---
+    rotaryENC();
+
   }
   else if (error == 0 && sensState == 1) {
     offSens();
@@ -306,21 +344,7 @@ void loop() {
       changeOutMcp0(button, laser);
       changeOutMcp1(button, laser);
       changeOutMcp2(button, laser);
-
-      // ------------- Check Photo Diodes -------------------
-      //      laserSensN = digitalRead(photoDiodeN);
-      //      Serial.println("Mega: " + String(laserSensN));
-      //      delay(250);
-      //      laserSens = mcp0.digitalRead(photoDiode);
-      //      Serial.println("mcp0: " + String(laserSens));
-      //      delay(250);
-      //      laserSens1 = mcp1.digitalRead(photoDiode);
-      //      Serial.println("mcp1: " + String(laserSens1));
-      //      delay(250);
-      //      laserSens2 = mcp2.digitalRead(photoDiode);
-      //      Serial.println("mcp2: " + String(laserSens2));
-      //      delay(250);
-      // ----------------------------------------------------
+      rotaryENC();
     }
   }
 
@@ -358,15 +382,15 @@ void changeOutMega(int inPort, int outPort) {
 
 
 
-//  laserSens = mcp0.digitalRead(photoDiode);
-//  if (laserSens == 1 ) {
-//    digitalWrite(laserN, LOW);
-//    readingN = LOW;
-//    previousN = LOW;
-//    stateN = LOW;
-//    //    errorState = 1;
-//    //    error = 1;
-//  }
+  //  laserSens = mcp0.digitalRead(photoDiode);
+  //  if (laserSens == 1 ) {
+  //    digitalWrite(laserN, LOW);
+  //    readingN = LOW;
+  //    previousN = LOW;
+  //    stateN = LOW;
+  //    //    errorState = 1;
+  //    //    error = 1;
+  //  }
 
 }
 
@@ -399,15 +423,15 @@ void changeOutMcp0(int inPort, int outPort) {
 
   }
 
-//  laserSens1 = mcp1.digitalRead(photoDiode);
-//  if (laserSens1 == 1 ) {
-//    mcp0.digitalWrite(laser, LOW);
-//    reading = LOW;
-//    previous = LOW;
-//    state = LOW;
-//    //    errorState = 1;
-//    //    error = 1;
-//  }
+  //  laserSens1 = mcp1.digitalRead(photoDiode);
+  //  if (laserSens1 == 1 ) {
+  //    mcp0.digitalWrite(laser, LOW);
+  //    reading = LOW;
+  //    previous = LOW;
+  //    state = LOW;
+  //    //    errorState = 1;
+  //    //    error = 1;
+  //  }
 
 }
 
@@ -439,16 +463,16 @@ void changeOutMcp1(int inPort, int outPort) {
     mcp2.digitalWrite(greenLedI, HIGH);
   }
 
-//  laserSens2 = mcp2.digitalRead(photoDiode);
-//  if (laserSens2 == 1 ) {
-//    mcp1.digitalWrite(laser, LOW);
-//    reading1 = LOW;
-//    previous1 = LOW;
-//    state1 = LOW;
-//    //    errorState = 1;
-//    //    error = 1;
-//  }
-  
+  //  laserSens2 = mcp2.digitalRead(photoDiode);
+  //  if (laserSens2 == 1 ) {
+  //    mcp1.digitalWrite(laser, LOW);
+  //    reading1 = LOW;
+  //    previous1 = LOW;
+  //    state1 = LOW;
+  //    //    errorState = 1;
+  //    //    error = 1;
+  //  }
+
 }
 
 // ------------------- VOID Button mcp2 -------------------
@@ -479,15 +503,15 @@ void changeOutMcp2(int inPort, int outPort) {
     digitalWrite(greenLedNI, HIGH);
   }
 
-//  laserSensN = digitalRead(photoDiodeN);
-//  if (laserSensN == 1 ) {
-//    mcp2.digitalWrite(laser, LOW);
-//    reading2 = LOW;
-//    previous2 = LOW;
-//    state2 = LOW;
-//    //    errorState = 1;
-//    //    error = 1;
-//  }
+  //  laserSensN = digitalRead(photoDiodeN);
+  //  if (laserSensN == 1 ) {
+  //    mcp2.digitalWrite(laser, LOW);
+  //    reading2 = LOW;
+  //    previous2 = LOW;
+  //    state2 = LOW;
+  //    //    errorState = 1;
+  //    //    error = 1;
+  //  }
 
 }
 // -------------------- Sens Mega --------------------
@@ -596,10 +620,9 @@ int sensSW() {
 
   swVal = !digitalRead(pinSW);
   if (pinSWLast == true ) {
-    if (swVal == LOW) {
+    if (swVal == LOW && menuitem == 1 ) {
       ++sens;
       tft.clearScreen();
-      //tft.fillScreen();
       tft.drawRect(3, 3, 125, 125, RED);
       tft.setTextSize(1);
       tft.setTextColor(WHITE);
@@ -708,26 +731,72 @@ int offSens() {
   }
 }
 
+// -------------------- Main Menu ---------------------
 
+void drawMenu()
+{
+  if (page == 1)
+  {
+    tft.setTextSize(2);
+    tft.fillRect(8, 44, 110, 80, BLACK);
+    tft.drawRect(3, 3, 125, 125, WHITE);
+    tft.setCursor(13, 17);
+    tft.setTextColor(YELLOW);
+    tft.println("MAIN MENU");
 
-// -------------------- Rotary ENC A and B ---------------------
-//int rotaryENC() {
-//  aVal = digitalRead(pinA);
-//  if (aVal != pinALast) { // Means the knob is rotating
-//    // if the knob is rotating, we need to determine direction
-//    if (digitalRead(pinB) != aVal) {       // Means pin A Changed first
-//      // dt = dt + 1;
-//      ++dt;
-//      dt = min(dt, 60);
-//      DispalyDelayTime();
-//
-//    } else {                               // Otherwise B changed first
-//      // dt = dt - 1;
-//      --dt;
-//      dt = max(1, dt);
-//      DispalyDelayTime();
-//    }
-//  }
-//  pinALast = aVal;
-//  errorState = sensSW();
-//}
+    if (menuitem == 1 && frame == 1)
+    {
+      displayMenuItem(menuItem1Eng, 45, true);
+      displayMenuItem(menuItem2Eng, 65, false);
+    }
+    else if (menuitem == 2 && frame == 1)
+    {
+      displayMenuItem(menuItem1Eng, 45, false);
+      displayMenuItem(menuItem2Eng, 65, true);
+    }
+
+  }
+}
+
+void displayMenuItem(String item, int position, boolean selected)
+{
+  if (selected)
+  {
+    tft.setTextSize(2);
+    tft.setTextColor(BLACK, WHITE);
+    tft.setCursor(8, position);
+    tft.print(">" + item);
+  } else
+  {
+    tft.setTextSize(2);
+    tft.setTextColor(WHITE, BLACK);
+    tft.setCursor(8, position);
+    tft.print(" " + item);
+  }
+//  tft.setCursor(8, position);
+//  tft.println(">" + item);
+}
+
+// -------------------- Rotary ENC ---------------------------
+int rotaryENC()
+{
+  aVal = digitalRead(pinA);
+  bVal = digitalRead(pinB);
+  if (aVal == LOW && bVal == LOW)
+  {
+    --menuitem;
+    if (menuitem < 1) {
+      menuitem = 1;
+    }
+    drawMenu();
+  }
+  else if (aVal == LOW && bVal == HIGH)
+  {
+    ++menuitem;
+    if (menuitem > 2) {
+      menuitem = 2;
+    }
+    drawMenu();
+  }
+  
+}
