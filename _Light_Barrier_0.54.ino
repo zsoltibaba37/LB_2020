@@ -1,6 +1,7 @@
 /* Laser Barrier - For Cobot
 
-   v0.61  - Main menu integrated. Activate 
+   v0.62  - Setup menu integrated. Exit working
+   v0.61  - Main menu integrated. Activate
    v.060  - Hardware ready and tested.
    v.059  - Check Mega and mcp0-1-2  PCBs
    v0.58  - Display Design
@@ -18,7 +19,7 @@
    v0.1   - Laser Working, Pushbutton working, RGB Led working -> Red: Light barrier=ON Green: Light barrier=OFF
 */
 
-float version = 0.61;
+float version = 0.62;
 
 // Analog Smooth
 #include "AnalogPin.h"
@@ -64,15 +65,11 @@ Adafruit_MCP23008 mcp2;         // Create mpc instance
 TFT_ILI9163C tft = TFT_ILI9163C(__CS, __DC, __RST);
 
 // -------- Language --------
-// EEPROM.write(addr, val);
-// value = EEPROM.read(address);
-
 #include <EEPROM.h>
 unsigned int langAddr = 0;
-int langValue; // 0 - 1 - 2
+int langValue; // 1 - 2 - 3
 String lang;
-//String lang1 = "HUN"
-//String lang2 = "DEU"
+
 
 // ---------- Mega ----------
 #define buttonN 2               // PushButton
@@ -95,17 +92,34 @@ int bVal;
 int swVal;
 //unsigned int a = 10;
 // ---------- Menu ----------
-int menuitem = 1;
-int frame = 1;
-int page = 1;
+unsigned int menuitem = 1;
+//int frame = 1;
+unsigned int page = 1;
 int lastMenuItem = 1;
 
+// ----- Page 1 -----
 String menuItem1Eng = "Activate";
 String menuItem2Eng = "Setup";
+
 String menuItem1Hun = "Aktiválás";
 String menuItem2Hun = "Beállítás";
+
 String menuItem1Deu = "Aktivierung";
 String menuItem2Deu = "Einstellung";
+
+// ----- Page 2 -----
+String menuItem3Eng = "Lang";
+String menuItem4Eng = "R.Delay";
+String menuItem5Eng = "Exit <";
+
+String menuItem3Hun = "Nyelv";
+String menuItem4Hun = "R.Késl.";
+String menuItem5Hun = "Kilép <";
+
+String menuItem3Deu = "Sprache";
+String menuItem4Deu = "R.Verzö..";
+String menuItem5Deu = "Verlas <";
+
 
 
 // ---------- Sate pinSW ----------
@@ -191,20 +205,20 @@ long time2 = 0;             // the last time the output pin was toggled
 // ---------- SETUP ----------
 void setup() {
   // -------- EEPROM Write once lang -------
-  //EEPROM.write(langAddr, 0);
-  //   0 - English    - ENG
-  //   1 - Hungarian  - HUN
-  //   2 - Deutsche   - DEU
+  //EEPROM.write(langAddr, 1);
+  //   1 - English    - ENG
+  //   2 - Hungarian  - HUN
+  //   3 - Deutsche   - DEU
   langValue = EEPROM.read(langAddr);
-  if (langValue == 0)
+  if (langValue == 1)
   {
     lang = "ENG";
   }
-  else if (langValue == 1)
+  else if (langValue == 2)
   {
     lang = "HUN";
   }
-  else if (langValue == 2)
+  else if (langValue == 3)
   {
     lang = "DEU";
   }
@@ -299,14 +313,15 @@ void loop() {
   // Sens State  0 = Sens Off  1 = Sense On
 
   if (error == 0 && sensState == 0) {
-    sensState = sensSW();
+
     changeOutMega(buttonN, laserN);
     changeOutMcp0(button, laser);
     changeOutMcp1(button, laser);
     changeOutMcp2(button, laser);
 
     // --- Main menu ---
-    rotaryENC();
+    rotaryMenu(1, 2);
+    sensState = sensSW();
 
   }
   else if (error == 0 && sensState == 1) {
@@ -338,13 +353,12 @@ void loop() {
 
   if (error == 1) {
     while (sensState == 0) {
-      pauseRobot();
       sensState = sensSW();
+      pauseRobot();
       changeOutMega(buttonN, laserN);
       changeOutMcp0(button, laser);
       changeOutMcp1(button, laser);
       changeOutMcp2(button, laser);
-      rotaryENC();
     }
   }
 
@@ -380,8 +394,6 @@ void changeOutMega(int inPort, int outPort) {
     mcp0.digitalWrite(greenLedI, HIGH);
   }
 
-
-
   //  laserSens = mcp0.digitalRead(photoDiode);
   //  if (laserSens == 1 ) {
   //    digitalWrite(laserN, LOW);
@@ -391,7 +403,6 @@ void changeOutMega(int inPort, int outPort) {
   //    //    errorState = 1;
   //    //    error = 1;
   //  }
-
 }
 
 // ------------------- VOID Button mcp0 -------------------
@@ -432,7 +443,6 @@ void changeOutMcp0(int inPort, int outPort) {
   //    //    errorState = 1;
   //    //    error = 1;
   //  }
-
 }
 
 // ------------------- VOID Button mcp1 -------------------
@@ -542,7 +552,7 @@ void sensMega() {
 // -------------------- Sens Mcp0 --------------------
 void sensMcp0() {
   laserSens = mcp0.digitalRead(photoDiode);
-  Serial.println(laserSens);
+  //Serial.println(laserSens);
   if (laserSens == 1 ) {
     digitalWrite(laserN, LOW);
     readingN = LOW;
@@ -615,35 +625,6 @@ void sensMcp2() {
   }
 }
 
-// -------------------- Rotary ENC Switch --------------------
-int sensSW() {
-
-  swVal = !digitalRead(pinSW);
-  if (pinSWLast == true ) {
-    if (swVal == LOW && menuitem == 1 ) {
-      ++sens;
-      tft.clearScreen();
-      tft.drawRect(3, 3, 125, 125, RED);
-      tft.setTextSize(1);
-      tft.setTextColor(WHITE);
-      tft.setCursor(28, 40);
-      tft.println("Laser Barrier");
-      tft.setCursor(12, 65);
-      tft.setTextSize(2);
-      tft.setTextColor(RED);
-      tft.println("ACTIVATED");
-      if (sens >= 1)
-        sens = 1;
-      pinSWLast = false;
-    }
-  }
-  if (swVal == HIGH) {
-    pinSWLast = true;
-  }
-  return sens;
-
-}
-
 // -------------------- Pause Relay --------------------
 void pauseRobot() {
   digitalWrite(contRelay, LOW);
@@ -713,26 +694,100 @@ int offSens() {
       tft.fillRect(80, 5, 8, 8, GREEN);
     }
 
-    else
-    {
-      sensOff1 = 0;
-      digitalWrite(greenLedNO, LOW);
-      tft.fillRect(20, 5, 8, 8, BLACK);
-      sensOff2 = 0;
-      mcp0.digitalWrite(greenLedO, LOW);
-      tft.fillRect(40, 5, 8, 8, BLACK);
-      sensOff3 = 0;
-      mcp1.digitalWrite(greenLedO, LOW);
-      tft.fillRect(60, 5, 8, 8, BLACK);
-      sensOff4 = 0;
-      mcp2.digitalWrite(greenLedO, LOW);
-      tft.fillRect(80, 5, 8, 8, BLACK);
-    }
+    //    else
+    //    {
+    //      sensOff1 = 0;
+    //      digitalWrite(greenLedNO, LOW);
+    //      tft.fillRect(20, 5, 8, 8, BLACK);
+    //      sensOff2 = 0;
+    //      mcp0.digitalWrite(greenLedO, LOW);
+    //      tft.fillRect(40, 5, 8, 8, BLACK);
+    //      sensOff3 = 0;
+    //      mcp1.digitalWrite(greenLedO, LOW);
+    //      tft.fillRect(60, 5, 8, 8, BLACK);
+    //      sensOff4 = 0;
+    //      mcp2.digitalWrite(greenLedO, LOW);
+    //      tft.fillRect(80, 5, 8, 8, BLACK);
+    //    }
   }
 }
 
-// -------------------- Main Menu ---------------------
+// -------------------- Rotary Button --------------------
+int sensSW() {
+  swVal = !digitalRead(pinSW);
+  if (pinSWLast == true ) {
+    if (swVal == LOW  && page == 1 && menuitem == 1) {
+      ++sens;
+      tft.clearScreen();
+      tft.drawRect(3, 3, 125, 125, RED);
+      tft.setTextSize(1);
+      tft.setTextColor(WHITE);
+      tft.setCursor(28, 40);
+      tft.println("Laser Barrier");
+      tft.setCursor(12, 65);
+      tft.setTextSize(2);
+      tft.setTextColor(RED);
+      tft.println("ACTIVATED");
+      if (sens >= 1)
+        sens = 1;
+      pinSWLast = false;
+    }
+    if (swVal == LOW && page == 1 && menuitem == 2 ) {
+      ++page;
+      if (page > 2)
+      {
+        page = 2;
+      }
+      menuitem = 1;
+      drawMenu();
+      pinSWLast = false;
+    }
+    if (swVal == LOW && page == 2 && menuitem == 3 ) { // Exit to page 1
+      --page;
+      if (page < 1)
+      {
+        page = 1;
+      }
+      menuitem = 1;
+      drawMenu();
+      pinSWLast = false;
+    }
+  }
+  if (swVal == HIGH) {
+    pinSWLast = true;
+  }
+  return sens;
+}
 
+// -------------------- Rotary Menu ---------------------------
+void rotaryMenu(int minValue, int maxValue)
+{
+  if ( page == 2 | page == 3) {
+    maxValue = maxValue + 1;  // Because of exit
+  }
+  aVal = digitalRead(pinA);
+  bVal = digitalRead(pinB);
+  if (digitalRead(pinA) == LOW && digitalRead(pinB) == LOW)
+  {
+    --menuitem;
+    if (menuitem < minValue)
+    {
+      menuitem = minValue;
+    }
+    drawMenu();
+  }
+  else if (digitalRead(pinA) == LOW && digitalRead(pinB) == HIGH)
+  {
+    ++menuitem;
+    if (menuitem > maxValue)
+    {
+      menuitem = maxValue;
+    }
+    drawMenu();
+  }
+}
+
+// -------------------- Draw Menu ---------------------
 void drawMenu()
 {
   if (page == 1)
@@ -740,21 +795,50 @@ void drawMenu()
     tft.setTextSize(2);
     tft.fillRect(8, 44, 110, 80, BLACK);
     tft.drawRect(3, 3, 125, 125, WHITE);
+    tft.fillRect(10, 10, 110, 28, BLACK);    
     tft.setCursor(13, 17);
     tft.setTextColor(YELLOW);
     tft.println("MAIN MENU");
 
-    if (menuitem == 1 && frame == 1)
+    if (menuitem == 1 )
     {
       displayMenuItem(menuItem1Eng, 45, true);
       displayMenuItem(menuItem2Eng, 65, false);
     }
-    else if (menuitem == 2 && frame == 1)
+    else if (menuitem == 2 )
     {
       displayMenuItem(menuItem1Eng, 45, false);
       displayMenuItem(menuItem2Eng, 65, true);
     }
+  }
+  if (page == 2)
+  {
+    tft.setTextSize(2);
+    tft.fillRect(8, 44, 110, 80, BLACK);
+    tft.drawRect(3, 3, 125, 125, WHITE);
+    tft.fillRect(10, 10, 110, 28, BLACK);
+    tft.setCursor(30, 17);
+    tft.setTextColor(YELLOW);
+    tft.println("SETUP");
 
+    if (menuitem == 1 )
+    {
+      displayMenuItem(menuItem3Eng, 45, true);
+      displayMenuItem(menuItem4Eng, 65, false);
+      displayMenuItem(menuItem5Eng, 95, false);
+    }
+    else if (menuitem == 2 )
+    {
+      displayMenuItem(menuItem3Eng, 45, false);
+      displayMenuItem(menuItem4Eng, 65, true);
+      displayMenuItem(menuItem5Eng, 95, false);
+    }
+    else if (menuitem == 3 )
+    {
+      displayMenuItem(menuItem3Eng, 45, false);
+      displayMenuItem(menuItem4Eng, 65, false);
+      displayMenuItem(menuItem5Eng, 95, true);
+    }
   }
 }
 
@@ -773,30 +857,6 @@ void displayMenuItem(String item, int position, boolean selected)
     tft.setCursor(8, position);
     tft.print(" " + item);
   }
-//  tft.setCursor(8, position);
-//  tft.println(">" + item);
-}
-
-// -------------------- Rotary ENC ---------------------------
-int rotaryENC()
-{
-  aVal = digitalRead(pinA);
-  bVal = digitalRead(pinB);
-  if (aVal == LOW && bVal == LOW)
-  {
-    --menuitem;
-    if (menuitem < 1) {
-      menuitem = 1;
-    }
-    drawMenu();
-  }
-  else if (aVal == LOW && bVal == HIGH)
-  {
-    ++menuitem;
-    if (menuitem > 2) {
-      menuitem = 2;
-    }
-    drawMenu();
-  }
-  
+  //  tft.setCursor(8, position);
+  //  tft.println(">" + item);
 }
