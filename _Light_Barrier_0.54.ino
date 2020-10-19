@@ -103,8 +103,8 @@ int lastMenuItem = 1;
 String menuItem1Eng = "Activate";
 String menuItem2Eng = "Setup";
 
-String menuItem1Hun = "Aktiválás";
-String menuItem2Hun = "Beállítás";
+String menuItem1Hun = "Aktivalas";
+String menuItem2Hun = "Beallitas";
 
 String menuItem1Deu = "Aktivierung";
 String menuItem2Deu = "Einstellung";
@@ -115,11 +115,11 @@ String menuItem4Eng = "R.Delay";
 String menuItem5Eng = " Exit <";
 
 String menuItem3Hun = "Nyelv";
-String menuItem4Hun = "R.Késl.";
-String menuItem5Hun = "Kilép <";
+String menuItem4Hun = "R.Kesl.";
+String menuItem5Hun = "Kilep <";
 
 String menuItem3Deu = "Sprache";
-String menuItem4Deu = "R.Verzö..";
+String menuItem4Deu = "R.Verzo..";
 String menuItem5Deu = "Verlas <";
 
 // ----- Page 3 -----
