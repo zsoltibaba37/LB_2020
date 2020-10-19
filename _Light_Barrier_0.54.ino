@@ -1,5 +1,6 @@
 /* Laser Barrier - For Cobot
 
+   v0.63  - Language manu integrated. Language select is working.
    v0.62  - Setup menu integrated. Exit working
    v0.61  - Main menu integrated. Activate
    v.060  - Hardware ready and tested.
@@ -67,7 +68,8 @@ TFT_ILI9163C tft = TFT_ILI9163C(__CS, __DC, __RST);
 // -------- Language --------
 #include <EEPROM.h>
 unsigned int langAddr = 0;
-int langValue; // 1 - 2 - 3
+int langValue;    // 1 - 2 - 3
+int newLangValue; // 1 - 2 - 3
 String lang;
 
 
@@ -90,7 +92,7 @@ boolean pinSWLast;
 int aVal;
 int bVal;
 int swVal;
-//unsigned int a = 10;
+
 // ---------- Menu ----------
 unsigned int menuitem = 1;
 //int frame = 1;
@@ -120,7 +122,11 @@ String menuItem3Deu = "Sprache";
 String menuItem4Deu = "R.Verzö..";
 String menuItem5Deu = "Verlas <";
 
+// ----- Page 3 -----
 
+String menuItem6 = "ENG";
+String menuItem7 = "HUN";
+String menuItem8 = "DEU";
 
 // ---------- Sate pinSW ----------
 int stateSW = LOW;           // the current state of the output pin
@@ -738,8 +744,21 @@ int sensSW() {
       {
         page = 2;
       }
-      menuitem = 1;
+      menuitem = 0;
+      tft.fillRect(8, 44, 110, 80, BLACK);
       drawMenu();
+      pinSWLast = false;
+    }
+    if (swVal == LOW && page == 2 && menuitem == 1 ) { // goto page 3
+      ++page;
+      if (page > 3)
+      {
+        page = 3;
+      }
+      menuitem = 0;
+      tft.fillRect(8, 44, 110, 80, BLACK);
+      drawMenu();
+      //delay(500);
       pinSWLast = false;
     }
     if (swVal == LOW && page == 2 && menuitem == 3 ) { // Exit to page 1
@@ -749,6 +768,52 @@ int sensSW() {
         page = 1;
       }
       menuitem = 1;
+      tft.fillRect(8, 44, 110, 80, BLACK);
+      drawMenu();
+      pinSWLast = false;
+    }
+    if (swVal == LOW && page == 3 && menuitem == 1 ) { // ENG Selected
+      newLangValue = 1;
+      if (newLangValue != langValue) {
+        EEPROM.write(langAddr, newLangValue);
+      }
+      --page;
+      if (page < 2)
+      {
+        page = 2;
+      }
+      menuitem = 1;
+      tft.fillRect(8, 44, 110, 80, BLACK);
+      drawMenu();
+      pinSWLast = false;
+    }
+    if (swVal == LOW && page == 3 && menuitem == 2 ) { // HUN Selected
+      newLangValue = 2;
+      if (newLangValue != langValue) {
+        EEPROM.write(langAddr, newLangValue);
+      }
+      --page;
+      if (page < 2)
+      {
+        page = 2;
+      }
+      menuitem = 1;
+      tft.fillRect(8, 44, 110, 80, BLACK);
+      drawMenu();
+      pinSWLast = false;
+    }
+    if (swVal == LOW && page == 3 && menuitem == 3 ) { // DEU Selected
+      newLangValue = 3;
+      if (newLangValue != langValue) {
+        EEPROM.write(langAddr, newLangValue);
+      }
+      --page;
+      if (page < 2)
+      {
+        page = 2;
+      }
+      menuitem = 1;
+      tft.fillRect(8, 44, 110, 80, BLACK);
       drawMenu();
       pinSWLast = false;
     }
@@ -756,6 +821,7 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
+
   return sens;
 }
 
@@ -793,9 +859,9 @@ void drawMenu()
   if (page == 1)
   {
     tft.setTextSize(2);
-    tft.fillRect(8, 44, 110, 80, BLACK);
+    //tft.fillRect(8, 44, 110, 80, BLACK);
     tft.drawRect(3, 3, 125, 125, WHITE);
-    tft.fillRect(10, 10, 110, 28, BLACK);    
+    tft.fillRect(10, 10, 110, 28, BLACK);
     tft.setCursor(13, 17);
     tft.setTextColor(YELLOW);
     tft.println("MAIN MENU");
@@ -814,7 +880,7 @@ void drawMenu()
   if (page == 2)
   {
     tft.setTextSize(2);
-    tft.fillRect(8, 44, 110, 80, BLACK);
+    //tft.fillRect(8, 44, 110, 80, BLACK);
     tft.drawRect(3, 3, 125, 125, WHITE);
     tft.fillRect(10, 10, 110, 28, BLACK);
     tft.setCursor(30, 17);
@@ -838,6 +904,35 @@ void drawMenu()
       displayMenuItem(menuItem3Eng, 45, false);
       displayMenuItem(menuItem4Eng, 65, false);
       displayMenuItem(menuItem5Eng, 95, true);
+    }
+  }
+  if (page == 3)
+  {
+    tft.setTextSize(2);
+    tft.fillRect(8, 44, 110, 80, BLACK);
+    tft.drawRect(3, 3, 125, 125, WHITE);
+    tft.fillRect(10, 10, 110, 28, BLACK);
+    tft.setCursor(12, 17);
+    tft.setTextColor(YELLOW);
+    tft.println("LANGUAGE");
+
+    if (menuitem == 1 )
+    {
+      displayMenuItem(menuItem6, 45, true);
+      displayMenuItem(menuItem7, 65, false);
+      displayMenuItem(menuItem8, 85, false);
+    }
+    else if (menuitem == 2 )
+    {
+      displayMenuItem(menuItem6, 45, false);
+      displayMenuItem(menuItem7, 65, true);
+      displayMenuItem(menuItem8, 85, false);
+    }
+    else if (menuitem == 3 )
+    {
+      displayMenuItem(menuItem6, 45, false);
+      displayMenuItem(menuItem7, 65, false);
+      displayMenuItem(menuItem8, 85, true);
     }
   }
 }
