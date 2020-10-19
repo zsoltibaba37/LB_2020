@@ -1,6 +1,6 @@
 /* Laser Barrier - For Cobot
 
-   v0.63  - Language manu integrated. Language select is working.
+   v0.63  - Language manu integrated. Language select is working. A few menu item translated
    v0.62  - Setup menu integrated. Exit working
    v0.61  - Main menu integrated. Activate
    v.060  - Hardware ready and tested.
@@ -112,7 +112,7 @@ String menuItem2Deu = "Einstellung";
 // ----- Page 2 -----
 String menuItem3Eng = "Lang";
 String menuItem4Eng = "R.Delay";
-String menuItem5Eng = "Exit <";
+String menuItem5Eng = " Exit <";
 
 String menuItem3Hun = "Nyelv";
 String menuItem4Hun = "R.Késl.";
@@ -124,9 +124,9 @@ String menuItem5Deu = "Verlas <";
 
 // ----- Page 3 -----
 
-String menuItem6 = "ENG";
-String menuItem7 = "HUN";
-String menuItem8 = "DEU";
+String menuItem6 = " ENG";
+String menuItem7 = " HUN";
+String menuItem8 = " DEU";
 
 // ---------- Sate pinSW ----------
 int stateSW = LOW;           // the current state of the output pin
@@ -148,6 +148,7 @@ unsigned int sensState = 0;
 unsigned long previousMillis = 0;     // will store last time LED was updated
 long OnTime = 200;                    // milliseconds of on-time
 long OffTime = 1000 - OnTime;         // milliseconds of off-time
+unsigned int offTimeAddr = 1;         // OffTime Memory Address
 int relayState = LOW;                 // The Pause relay State
 
 // Analog In
@@ -236,8 +237,21 @@ void setup() {
   tft.drawRect(3, 3, 125, 125, WHITE);
   tft.setTextColor(WHITE);
   tft.setTextSize(1);
+  if (langValue == 1)
+  {
   tft.setCursor(28, 50);
   tft.println("Laser Barrier");
+  }
+  else if (langValue == 2)
+  {
+  tft.setCursor(28, 50);
+  tft.println("Lezer sorompo");
+  }
+  else if (langValue == 3)
+  {
+  tft.setCursor(35, 50);
+  tft.println("Lasersperre");
+  }
   tft.setTextColor(GREEN);
   tft.setCursor(50, 62);
   tft.println("v" + String(version));
@@ -546,12 +560,33 @@ void sensMega() {
     tft.drawRect(3, 3, 125, 125, BLUE);
     tft.setTextSize(1);
     tft.setTextColor(WHITE);
+    if (langValue == 1)
+    {
     tft.setCursor(22, 50);
     tft.println("Fourth line was");
     tft.setTextSize(2);
     tft.setTextColor(BLUE);
     tft.setCursor(24, 65);
     tft.println("crossed");
+    }
+    if (langValue == 2)
+    {
+    tft.setCursor(30, 50);
+    tft.println("Negyes vonal");
+    tft.setTextSize(2);
+    tft.setTextColor(BLUE);
+    tft.setCursor(25, 65);
+    tft.println("szakadt");
+    }
+    if (langValue == 3)
+    {
+    tft.setCursor(35, 50);
+    tft.println("Linie vier");
+    tft.setTextSize(2);
+    tft.setTextColor(BLUE);
+    tft.setCursor(18, 65);
+    tft.println("gekreuzt");
+    }
   }
 }
 
@@ -738,29 +773,44 @@ int sensSW() {
         sens = 1;
       pinSWLast = false;
     }
-    if (swVal == LOW && page == 1 && menuitem == 2 ) {
+  }
+  if (swVal == HIGH) {
+    pinSWLast = true;
+  }
+  if (pinSWLast == true ) {
+    if (swVal == LOW && page == 1 && menuitem == 2 ) { // goto page 2
       ++page;
       if (page > 2)
       {
         page = 2;
       }
-      menuitem = 0;
-      tft.fillRect(8, 44, 110, 80, BLACK);
+      menuitem = 1;
+      tft.fillRect(10, 10, 110, 28, BLACK);
       drawMenu();
       pinSWLast = false;
     }
+  }
+  if (swVal == HIGH) {
+    pinSWLast = true;
+  }
+  if (pinSWLast == true ) {
     if (swVal == LOW && page == 2 && menuitem == 1 ) { // goto page 3
       ++page;
       if (page > 3)
       {
         page = 3;
       }
-      menuitem = 0;
-      tft.fillRect(8, 44, 110, 80, BLACK);
+      menuitem = langValue;
+      tft.fillRect(10, 10, 110, 28, BLACK);
       drawMenu();
       //delay(500);
       pinSWLast = false;
     }
+  }
+  if (swVal == HIGH) {
+    pinSWLast = true;
+  }
+  if (pinSWLast == true ) {
     if (swVal == LOW && page == 2 && menuitem == 3 ) { // Exit to page 1
       --page;
       if (page < 1)
@@ -768,14 +818,20 @@ int sensSW() {
         page = 1;
       }
       menuitem = 1;
-      tft.fillRect(8, 44, 110, 80, BLACK);
+      tft.fillRect(10, 10, 110, 28, BLACK);
       drawMenu();
       pinSWLast = false;
     }
+  }
+  if (swVal == HIGH) {
+    pinSWLast = true;
+  }
+  if (pinSWLast == true ) {
     if (swVal == LOW && page == 3 && menuitem == 1 ) { // ENG Selected
       newLangValue = 1;
       if (newLangValue != langValue) {
         EEPROM.write(langAddr, newLangValue);
+        langValue = EEPROM.read(langAddr);
       }
       --page;
       if (page < 2)
@@ -783,14 +839,20 @@ int sensSW() {
         page = 2;
       }
       menuitem = 1;
-      tft.fillRect(8, 44, 110, 80, BLACK);
+      tft.fillRect(10, 10, 110, 28, BLACK);
       drawMenu();
       pinSWLast = false;
     }
+  }
+  if (swVal == HIGH) {
+    pinSWLast = true;
+  }
+  if (pinSWLast == true ) {
     if (swVal == LOW && page == 3 && menuitem == 2 ) { // HUN Selected
       newLangValue = 2;
       if (newLangValue != langValue) {
         EEPROM.write(langAddr, newLangValue);
+        langValue = EEPROM.read(langAddr);
       }
       --page;
       if (page < 2)
@@ -798,14 +860,20 @@ int sensSW() {
         page = 2;
       }
       menuitem = 1;
-      tft.fillRect(8, 44, 110, 80, BLACK);
+      tft.fillRect(10, 10, 110, 28, BLACK);
       drawMenu();
       pinSWLast = false;
     }
+  }
+  if (swVal == HIGH) {
+    pinSWLast = true;
+  }
+  if (pinSWLast == true ) {
     if (swVal == LOW && page == 3 && menuitem == 3 ) { // DEU Selected
       newLangValue = 3;
       if (newLangValue != langValue) {
         EEPROM.write(langAddr, newLangValue);
+        langValue = EEPROM.read(langAddr);
       }
       --page;
       if (page < 2)
@@ -813,7 +881,7 @@ int sensSW() {
         page = 2;
       }
       menuitem = 1;
-      tft.fillRect(8, 44, 110, 80, BLACK);
+      tft.fillRect(10, 10, 110, 28, BLACK);
       drawMenu();
       pinSWLast = false;
     }
@@ -859,9 +927,9 @@ void drawMenu()
   if (page == 1)
   {
     tft.setTextSize(2);
-    //tft.fillRect(8, 44, 110, 80, BLACK);
+    tft.fillRect(8, 44, 110, 80, BLACK);
     tft.drawRect(3, 3, 125, 125, WHITE);
-    tft.fillRect(10, 10, 110, 28, BLACK);
+    //tft.fillRect(10, 10, 110, 28, BLACK);
     tft.setCursor(13, 17);
     tft.setTextColor(YELLOW);
     tft.println("MAIN MENU");
@@ -880,10 +948,10 @@ void drawMenu()
   if (page == 2)
   {
     tft.setTextSize(2);
-    //tft.fillRect(8, 44, 110, 80, BLACK);
+    tft.fillRect(8, 44, 110, 80, BLACK);
     tft.drawRect(3, 3, 125, 125, WHITE);
-    tft.fillRect(10, 10, 110, 28, BLACK);
-    tft.setCursor(30, 17);
+    //tft.fillRect(10, 10, 110, 28, BLACK);
+    tft.setCursor(34, 17);
     tft.setTextColor(YELLOW);
     tft.println("SETUP");
 
@@ -911,11 +979,38 @@ void drawMenu()
     tft.setTextSize(2);
     tft.fillRect(8, 44, 110, 80, BLACK);
     tft.drawRect(3, 3, 125, 125, WHITE);
-    tft.fillRect(10, 10, 110, 28, BLACK);
-    tft.setCursor(12, 17);
+    // ENG Flag ----
+    tft.fillRect(75,45,20,15, RED);
+    tft.fillRect(84,45,2,15, BLUE);
+    tft.fillRect(75,52,20,2, BLUE);
+    //tft.fillRect(75,55,20,5, GREEN);
+    // HUN Flag ----
+    tft.fillRect(75,65,20,5, BLUE);
+    tft.fillRect(75,70,20,5, WHITE);
+    tft.fillRect(75,75,20,5, GREEN);
+    // DEU Flag ----
+    tft.drawRect(75,85, 20, 15, WHITE);
+    tft.fillRect(76,86,18,5, BLACK);
+    tft.fillRect(76,90,18,5, BLUE);
+    tft.fillRect(76,95,18,5, CYAN);
+    // -------------------------------
+    //tft.fillRect(10, 10, 110, 28, BLACK);
     tft.setTextColor(YELLOW);
+    if (langValue == 1)
+    {
+    tft.setCursor(18, 17);
     tft.println("LANGUAGE");
-
+    }
+    else if (langValue == 2)
+    {
+    tft.setCursor(34, 17);
+    tft.println("NYELV");
+    }
+    else if (langValue == 3)
+    {
+    tft.setCursor(22, 17);
+    tft.println("SPRACHE");
+    }
     if (menuitem == 1 )
     {
       displayMenuItem(menuItem6, 45, true);
