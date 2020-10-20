@@ -1,5 +1,6 @@
-/* Laser Barrier - For Cobot
+/* Laser Barrier - For Cobot - AutoKobot Ltd.
 
+   v0.64  - Off Relay Delay - setup integrated. All menu item translated.
    v0.63  - Language manu integrated. Language select is working. A few menu item translated
    v0.62  - Setup menu integrated. Exit working
    v0.61  - Main menu integrated. Activate
@@ -20,7 +21,7 @@
    v0.1   - Laser Working, Pushbutton working, RGB Led working -> Red: Light barrier=ON Green: Light barrier=OFF
 */
 
-float version = 0.62;
+float version = 0.64;
 
 // Analog Smooth
 #include "AnalogPin.h"
@@ -34,15 +35,12 @@ Adafruit_MCP23008 mcp1;         // Create mpc instance
 Adafruit_MCP23008 mcp2;         // Create mpc instance
 
 //char *mcpNames[] = {"mcp0", "mcp1", "mcp2"};
-//unsigned int mcpNumber = 2;
-
 
 // -------------------- SPI ----------
 #include <SPI.h>
 #include <Adafruit_GFX.h>
 #include <gfxfont.h>
 #include <TFT_ILI9163C.h>
-
 
 // All wiring required, only 3 defines for hardware SPI on 328P
 //                              Mega      Nano
@@ -51,7 +49,6 @@ Adafruit_MCP23008 mcp2;         // Create mpc instance
 // MOSI --> (SDA) --> D11       // 51     // 11
 #define __RST 48                // 48     // 12
 // SCLK --> (SCK) --> D13       // 52     // 13
-
 
 // Color definitions
 #define BLACK   0x0000
@@ -71,7 +68,6 @@ unsigned int langAddr = 0;
 int langValue;    // 1 - 2 - 3
 int newLangValue; // 1 - 2 - 3
 String lang;
-
 
 // ---------- Mega ----------
 #define buttonN 2               // PushButton
@@ -103,11 +99,11 @@ int lastMenuItem = 1;
 String menuItem1Eng = "Activate";
 String menuItem2Eng = "Setup";
 
-String menuItem1Hun = "Aktivalas";
-String menuItem2Hun = "Beallitas";
+String menuItem1Hun = "Aktival";
+String menuItem2Hun = "Beallit";
 
-String menuItem1Deu = "Aktivierung";
-String menuItem2Deu = "Einstellung";
+String menuItem1Deu = "Aktivie.";
+String menuItem2Deu = "Einstel.";
 
 // ----- Page 2 -----
 String menuItem3Eng = "Lang";
@@ -119,8 +115,8 @@ String menuItem4Hun = "R.Kesl.";
 String menuItem5Hun = "Kilep <";
 
 String menuItem3Deu = "Sprache";
-String menuItem4Deu = "R.Verzo..";
-String menuItem5Deu = "Verlas <";
+String menuItem4Deu = "R.Verzo.";
+String menuItem5Deu = " Ruck <";
 
 // ----- Page 3 -----
 
@@ -144,23 +140,27 @@ unsigned int sensState = 0;
 // Pause Robot -- Relay Control
 #define pauseRelay 22                 // In 1sec 200mS On - Pause Signal
 #define contRelay 24                  // Allways On except on error - Continue
-#define gripperRelay 26                // Allways On except on error - Gripper
+#define gripperRelay 26               // Allways On except on error - Gripper
 unsigned long previousMillis = 0;     // will store last time LED was updated
 long OnTime = 200;                    // milliseconds of on-time
-long OffTime = 1000 - OnTime;         // milliseconds of off-time
-unsigned int offTimeAddr = 1;         // OffTime Memory Address
+long OffTimeValue;
+long NewOffTimeValue;
+long OffTime;                         // milliseconds of off-time
+unsigned int timeAddr = 1;            // OffTime Memory Address
+//EEPROM.write(timeAddr, 8);          // Write once
+
 int relayState = LOW;                 // The Pause relay State
 
 // Analog In
 //#define anaRobot A0                 // Reads the analog input every 250 milliseconds
-AnalogPin INA(A0);
-unsigned long prevMillis = 0;     // will store last time
-long measureTime = 20;           // milliseconds measure time
-unsigned int valueRobot;          // Raw analog
-unsigned int sensOff1 = 0;         // 1 gate turn off
-unsigned int sensOff2 = 0;         // 2 gate turn off
-unsigned int sensOff3 = 0;         // 3 gate turn off
-unsigned int sensOff4 = 0;         // 4 gate turn off
+AnalogPin INA(A0);                    // Analog input
+unsigned long prevMillis = 0;         // will store last time
+long measureTime = 20;                // milliseconds measure time
+unsigned int valueRobot;              // Raw analog
+unsigned int sensOff1 = 0;            // 1 gate turn off
+unsigned int sensOff2 = 0;            // 2 gate turn off
+unsigned int sensOff3 = 0;            // 3 gate turn off
+unsigned int sensOff4 = 0;            // 4 gate turn off
 
 // ---------- mcp0 ----------
 #define button 0                // PushButton
@@ -230,35 +230,59 @@ void setup() {
     lang = "DEU";
   }
 
+  // ---- Relay OffTime
+  // EEPROM.write(timeAddr, OffTimeValue);         // Write once
+  OffTimeValue = EEPROM.read(timeAddr);
+  OffTime = OffTimeValue * 100;
+
+
   // TFT
   tft.begin();
   tft.setRotation(3);
   tft.clearScreen();
   tft.drawRect(3, 3, 125, 125, WHITE);
   tft.setTextColor(WHITE);
-  tft.setTextSize(1);
+  tft.setTextSize(2);
+  // ----- Lang
   if (langValue == 1)
   {
-  tft.setCursor(28, 50);
-  tft.println("Laser Barrier");
+    tft.setCursor(38, 40);
+    tft.println("Laser");
+    tft.setCursor(27, 60);
+    tft.println("Barrier");
   }
   else if (langValue == 2)
   {
-  tft.setCursor(28, 50);
-  tft.println("Lezer sorompo");
+    tft.setCursor(38, 40);
+    tft.println("Lezer");
+    tft.setCursor(27, 60);
+    tft.println("Sorompo");
   }
   else if (langValue == 3)
   {
-  tft.setCursor(35, 50);
-  tft.println("Lasersperre");
+    tft.setCursor(30, 40);
+    tft.println("Laser-");
+    tft.setCursor(30, 60);
+    tft.println("Sperre");
   }
+  // ----
+  tft.setTextSize(2);
+  tft.setTextColor(RED);
+  tft.setCursor(14, 13);
+  tft.println("AutoKobot");
+
+  tft.setTextSize(1);
   tft.setTextColor(GREEN);
-  tft.setCursor(50, 62);
+  tft.setCursor(50, 85);
   tft.println("v" + String(version));
   tft.setTextColor(WHITE);
-  tft.setCursor(55, 74);
+  tft.setCursor(55, 97);
   tft.println(lang);
 
+  tft.setTextSize(1);
+  tft.setTextColor(WHITE);
+  tft.setCursor(52, 114);
+  tft.println("2020");
 
   //  Serial.begin(115200);
   Serial.begin(115200);
@@ -374,6 +398,7 @@ void loop() {
   if (error == 1) {
     while (sensState == 0) {
       sensState = sensSW();
+      rotaryMenu(1, 2);
       pauseRobot();
       changeOutMega(buttonN, laserN);
       changeOutMcp0(button, laser);
@@ -560,33 +585,35 @@ void sensMega() {
     tft.drawRect(3, 3, 125, 125, BLUE);
     tft.setTextSize(1);
     tft.setTextColor(WHITE);
+    // ----- Lang
     if (langValue == 1)
     {
-    tft.setCursor(22, 50);
-    tft.println("Fourth line was");
-    tft.setTextSize(2);
-    tft.setTextColor(BLUE);
-    tft.setCursor(24, 65);
-    tft.println("crossed");
+      tft.setCursor(22, 50);
+      tft.println("Fourth line was");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(24, 65);
+      tft.println("crossed");
     }
     if (langValue == 2)
     {
-    tft.setCursor(30, 50);
-    tft.println("Negyes vonal");
-    tft.setTextSize(2);
-    tft.setTextColor(BLUE);
-    tft.setCursor(25, 65);
-    tft.println("szakadt");
+      tft.setCursor(30, 50);
+      tft.println("Negyes vonal");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(25, 65);
+      tft.println("szakadt");
     }
     if (langValue == 3)
     {
-    tft.setCursor(35, 50);
-    tft.println("Linie vier");
-    tft.setTextSize(2);
-    tft.setTextColor(BLUE);
-    tft.setCursor(18, 65);
-    tft.println("gekreuzt");
+      tft.setCursor(35, 50);
+      tft.println("Linie vier");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(18, 65);
+      tft.println("gekreuzt");
     }
+    // -----
   }
 }
 
@@ -607,12 +634,35 @@ void sensMcp0() {
     tft.drawRect(3, 3, 125, 125, BLUE);
     tft.setTextSize(1);
     tft.setTextColor(WHITE);
-    tft.setCursor(25, 50);
-    tft.println("First line was");
-    tft.setTextSize(2);
-    tft.setTextColor(BLUE);
-    tft.setCursor(24, 65);
-    tft.println("crossed");
+    // ---- Lang
+    if (langValue == 1)
+    {
+      tft.setCursor(25, 50);
+      tft.println("First line was");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(24, 65);
+      tft.println("crossed");
+    }
+    if (langValue == 2)
+    {
+      tft.setCursor(34, 50);
+      tft.println("Egyes vonal");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(25, 65);
+      tft.println("szakadt");
+    }
+    if (langValue == 3)
+    {
+      tft.setCursor(35, 50);
+      tft.println("Linie einer");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(18, 65);
+      tft.println("gekreuzt");
+    }
+    // -----
   }
 }
 
@@ -632,12 +682,35 @@ void sensMcp1() {
     tft.drawRect(3, 3, 125, 125, BLUE);
     tft.setTextSize(1);
     tft.setTextColor(WHITE);
-    tft.setCursor(22, 50);
-    tft.println("Second line was");
-    tft.setTextSize(2);
-    tft.setTextColor(BLUE);
-    tft.setCursor(24, 65);
-    tft.println("crossed");
+    // ---- Lang
+    if (langValue == 1)
+    {
+      tft.setCursor(22, 50);
+      tft.println("Second line was");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(24, 65);
+      tft.println("crossed");
+    }
+    if (langValue == 2)
+    {
+      tft.setCursor(34, 50);
+      tft.println("Kettes vonal");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(25, 65);
+      tft.println("szakadt");
+    }
+    if (langValue == 3)
+    {
+      tft.setCursor(32, 50);
+      tft.println("Linie zweite");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(18, 65);
+      tft.println("gekreuzt");
+    }
+    // ----
   }
 }
 
@@ -657,12 +730,35 @@ void sensMcp2() {
     tft.drawRect(3, 3, 125, 125, BLUE);
     tft.setTextSize(1);
     tft.setTextColor(WHITE);
-    tft.setCursor(25, 50);
-    tft.println("Third line was");
-    tft.setTextSize(2);
-    tft.setTextColor(BLUE);
-    tft.setCursor(24, 65);
-    tft.println("crossed");
+    // ---- Lang
+    if (langValue == 1)
+    {
+      tft.setCursor(25, 50);
+      tft.println("Third line was");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(24, 65);
+      tft.println("crossed");
+    }
+    if (langValue == 2)
+    {
+      tft.setCursor(34, 50);
+      tft.println("Harmas vonal");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(25, 65);
+      tft.println("szakadt");
+    }
+    if (langValue == 3)
+    {
+      tft.setCursor(32, 50);
+      tft.println("Linie dreite");
+      tft.setTextSize(2);
+      tft.setTextColor(BLUE);
+      tft.setCursor(18, 65);
+      tft.println("gekreuzt");
+    }
+    // ----
   }
 }
 
@@ -761,14 +857,38 @@ int sensSW() {
       ++sens;
       tft.clearScreen();
       tft.drawRect(3, 3, 125, 125, RED);
-      tft.setTextSize(1);
       tft.setTextColor(WHITE);
-      tft.setCursor(28, 40);
-      tft.println("Laser Barrier");
-      tft.setCursor(12, 65);
-      tft.setTextSize(2);
-      tft.setTextColor(RED);
-      tft.println("ACTIVATED");
+      // ---- Lang
+      if (langValue == 1)
+      {
+        tft.setTextSize(1);
+        tft.setCursor(28, 40);
+        tft.println("Laser Barrier");
+        tft.setCursor(12, 65);
+        tft.setTextSize(2);
+        tft.setTextColor(RED);
+        tft.println("ACTIVATED");
+      }
+      if (langValue == 2)
+      {
+        tft.setTextSize(1);
+        tft.setCursor(35, 40);
+        tft.println("Fenysorompo");
+        tft.setCursor(12, 65);
+        tft.setTextSize(2);
+        tft.setTextColor(RED);
+        tft.println("AKTIVALVA");
+      }
+      if (langValue == 3)
+      {
+        tft.setTextSize(1);
+        tft.setCursor(35, 40);
+        tft.println("Lasersperre");
+        tft.setCursor(12, 65);
+        tft.setTextSize(2);
+        tft.setTextColor(RED);
+        tft.println("AKTIVIERT");
+      }
       if (sens >= 1)
         sens = 1;
       pinSWLast = false;
@@ -810,6 +930,20 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
+
+  if (pinSWLast == true ) {
+    if (swVal == LOW && page == 2 && menuitem == 2 ) { // goto page 4
+      page = 4;
+      tft.fillRect(10, 10, 110, 28, BLACK);
+      menuitem = OffTimeValue;
+      drawMenu();
+      pinSWLast = false;
+    }
+  }
+  if (swVal == HIGH) {
+    pinSWLast = true;
+  }
+
   if (pinSWLast == true ) {
     if (swVal == LOW && page == 2 && menuitem == 3 ) { // Exit to page 1
       --page;
@@ -817,7 +951,7 @@ int sensSW() {
       {
         page = 1;
       }
-      menuitem = 1;
+      menuitem = 2;
       tft.fillRect(10, 10, 110, 28, BLACK);
       drawMenu();
       pinSWLast = false;
@@ -889,6 +1023,25 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
+  // ---- Relay Delay
+  if (pinSWLast == true ) {
+    if (swVal == LOW && page == 4  ) {                 // Exit to page 2 from page 4
+      NewOffTimeValue = menuitem;
+      if (OffTimeValue != NewOffTimeValue) {
+        EEPROM.write(timeAddr, NewOffTimeValue);
+        OffTimeValue = EEPROM.read(timeAddr);
+        OffTime = OffTimeValue * 100;
+      }
+      page = 2;
+      menuitem = 2;
+      tft.fillRect(10, 10, 110, 28, BLACK);
+      drawMenu();
+      pinSWLast = false;
+    }
+  }
+  if (swVal == HIGH) {
+    pinSWLast = true;
+  }
 
   return sens;
 }
@@ -899,25 +1052,54 @@ void rotaryMenu(int minValue, int maxValue)
   if ( page == 2 | page == 3) {
     maxValue = maxValue + 1;  // Because of exit
   }
+  if ( page == 4) {
+    maxValue = 30;
+    minValue = 2;
+  }
   aVal = digitalRead(pinA);
   bVal = digitalRead(pinB);
   if (digitalRead(pinA) == LOW && digitalRead(pinB) == LOW)
   {
-    --menuitem;
-    if (menuitem < minValue)
+    if (page == 4)
     {
-      menuitem = minValue;
+      ++menuitem;
+      if (menuitem > maxValue)
+      {
+        menuitem = maxValue;
+      }
+      drawMenu();
     }
-    drawMenu();
+    if (page == 1 | page == 2 | page == 3)
+    {
+      --menuitem;
+      if (menuitem < minValue)
+      {
+        menuitem = minValue;
+      }
+      drawMenu();
+    }
   }
+
   else if (digitalRead(pinA) == LOW && digitalRead(pinB) == HIGH)
   {
-    ++menuitem;
-    if (menuitem > maxValue)
+    if (page == 4)
     {
-      menuitem = maxValue;
+      --menuitem;
+      if (menuitem < minValue)
+      {
+        menuitem = minValue;
+      }
+      drawMenu();
     }
-    drawMenu();
+    if (page == 1 | page == 2 | page == 3)
+    {
+      ++menuitem;
+      if (menuitem > maxValue)
+      {
+        menuitem = maxValue;
+      }
+      drawMenu();
+    }
   }
 }
 
@@ -927,22 +1109,62 @@ void drawMenu()
   if (page == 1)
   {
     tft.setTextSize(2);
-    tft.fillRect(8, 44, 110, 80, BLACK);
+    tft.fillRect(8, 8, 120, 120, BLACK);
     tft.drawRect(3, 3, 125, 125, WHITE);
     //tft.fillRect(10, 10, 110, 28, BLACK);
-    tft.setCursor(13, 17);
     tft.setTextColor(YELLOW);
-    tft.println("MAIN MENU");
+    // ---- Lang
+    if (langValue == 1)
+    {
+      tft.setCursor(13, 17);
+      tft.println("MAIN MENU");
+    }
+    if (langValue == 2)
+    {
+      tft.setCursor(28, 17);
+      tft.println("FOMENU");
+    }
+    if (langValue == 3)
+    {
+      tft.setCursor(13, 17);
+      tft.println("HAUPTMENU");
+    }
 
     if (menuitem == 1 )
     {
-      displayMenuItem(menuItem1Eng, 45, true);
-      displayMenuItem(menuItem2Eng, 65, false);
+      if (langValue == 1)
+      {
+        displayMenuItem(menuItem1Eng, 45, true);
+        displayMenuItem(menuItem2Eng, 65, false);
+      }
+      if (langValue == 2)
+      {
+        displayMenuItem(menuItem1Hun, 45, true);
+        displayMenuItem(menuItem2Hun, 65, false);
+      }
+      if (langValue == 3)
+      {
+        displayMenuItem(menuItem1Deu, 45, true);
+        displayMenuItem(menuItem2Deu, 65, false);
+      }
     }
     else if (menuitem == 2 )
     {
-      displayMenuItem(menuItem1Eng, 45, false);
-      displayMenuItem(menuItem2Eng, 65, true);
+      if (langValue == 1)
+      {
+        displayMenuItem(menuItem1Eng, 45, false);
+        displayMenuItem(menuItem2Eng, 65, true);
+      }
+      if (langValue == 2)
+      {
+        displayMenuItem(menuItem1Hun, 45, false);
+        displayMenuItem(menuItem2Hun, 65, true);
+      }
+      if (langValue == 3)
+      {
+        displayMenuItem(menuItem1Deu, 45, false);
+        displayMenuItem(menuItem2Deu, 65, true);
+      }
     }
   }
   if (page == 2)
@@ -951,27 +1173,85 @@ void drawMenu()
     tft.fillRect(8, 44, 110, 80, BLACK);
     tft.drawRect(3, 3, 125, 125, WHITE);
     //tft.fillRect(10, 10, 110, 28, BLACK);
-    tft.setCursor(34, 17);
     tft.setTextColor(YELLOW);
-    tft.println("SETUP");
+    if (langValue == 1)
+    {
+      tft.setCursor(34, 17);
+      tft.println("SETUP");
+    }
+    if (langValue == 2)
+    {
+      tft.setCursor(13, 17);
+      tft.println("BEALLITAS");
+    }
+    if (langValue == 3)
+    {
+      tft.setCursor(12, 17);
+      tft.println("EINSTEL.");
+    }
 
     if (menuitem == 1 )
     {
-      displayMenuItem(menuItem3Eng, 45, true);
-      displayMenuItem(menuItem4Eng, 65, false);
-      displayMenuItem(menuItem5Eng, 95, false);
+      if (langValue == 1)
+      {
+        displayMenuItem(menuItem3Eng, 45, true);
+        displayMenuItem(menuItem4Eng, 65, false);
+        displayMenuItem(menuItem5Eng, 95, false);
+      }
+      if (langValue == 2)
+      {
+        displayMenuItem(menuItem3Hun, 45, true);
+        displayMenuItem(menuItem4Hun, 65, false);
+        displayMenuItem(menuItem5Hun, 95, false);
+      }
+      if (langValue == 3)
+      {
+        displayMenuItem(menuItem3Deu, 45, true);
+        displayMenuItem(menuItem4Deu, 65, false);
+        displayMenuItem(menuItem5Deu, 95, false);
+      }
     }
     else if (menuitem == 2 )
     {
-      displayMenuItem(menuItem3Eng, 45, false);
-      displayMenuItem(menuItem4Eng, 65, true);
-      displayMenuItem(menuItem5Eng, 95, false);
+      if (langValue == 1)
+      {
+        displayMenuItem(menuItem3Eng, 45, false);
+        displayMenuItem(menuItem4Eng, 65, true);
+        displayMenuItem(menuItem5Eng, 95, false);
+      }
+      if (langValue == 2)
+      {
+        displayMenuItem(menuItem3Hun, 45, false);
+        displayMenuItem(menuItem4Hun, 65, true);
+        displayMenuItem(menuItem5Hun, 95, false);
+      }
+      if (langValue == 3)
+      {
+        displayMenuItem(menuItem3Deu, 45, false);
+        displayMenuItem(menuItem4Deu, 65, true);
+        displayMenuItem(menuItem5Deu, 95, false);
+      }
     }
     else if (menuitem == 3 )
     {
-      displayMenuItem(menuItem3Eng, 45, false);
-      displayMenuItem(menuItem4Eng, 65, false);
-      displayMenuItem(menuItem5Eng, 95, true);
+      if (langValue == 1)
+      {
+        displayMenuItem(menuItem3Eng, 45, false);
+        displayMenuItem(menuItem4Eng, 65, false);
+        displayMenuItem(menuItem5Eng, 95, true);
+      }
+      if (langValue == 2)
+      {
+        displayMenuItem(menuItem3Hun, 45, false);
+        displayMenuItem(menuItem4Hun, 65, false);
+        displayMenuItem(menuItem5Hun, 95, true);
+      }
+      if (langValue == 3)
+      {
+        displayMenuItem(menuItem3Deu, 45, false);
+        displayMenuItem(menuItem4Deu, 65, false);
+        displayMenuItem(menuItem5Deu, 95, true);
+      }
     }
   }
   if (page == 3)
@@ -980,36 +1260,36 @@ void drawMenu()
     tft.fillRect(8, 44, 110, 80, BLACK);
     tft.drawRect(3, 3, 125, 125, WHITE);
     // ENG Flag ----
-    tft.fillRect(75,45,20,15, RED);
-    tft.fillRect(84,45,2,15, BLUE);
-    tft.fillRect(75,52,20,2, BLUE);
+    tft.fillRect(75, 45, 20, 15, WHITE);
+    tft.fillRect(84, 45, 2, 15, BLUE);
+    tft.fillRect(75, 52, 20, 2, BLUE);
     //tft.fillRect(75,55,20,5, GREEN);
     // HUN Flag ----
-    tft.fillRect(75,65,20,5, BLUE);
-    tft.fillRect(75,70,20,5, WHITE);
-    tft.fillRect(75,75,20,5, GREEN);
+    tft.fillRect(75, 65, 20, 5, BLUE);
+    tft.fillRect(75, 70, 20, 5, WHITE);
+    tft.fillRect(75, 75, 20, 5, GREEN);
     // DEU Flag ----
-    tft.drawRect(75,85, 20, 15, WHITE);
-    tft.fillRect(76,86,18,5, BLACK);
-    tft.fillRect(76,90,18,5, BLUE);
-    tft.fillRect(76,95,18,5, CYAN);
+    tft.drawRect(75, 85, 20, 15, WHITE);
+    tft.fillRect(76, 86, 18, 5, BLACK);
+    tft.fillRect(76, 90, 18, 5, BLUE);
+    tft.fillRect(76, 95, 18, 5, CYAN);
     // -------------------------------
     //tft.fillRect(10, 10, 110, 28, BLACK);
     tft.setTextColor(YELLOW);
     if (langValue == 1)
     {
-    tft.setCursor(18, 17);
-    tft.println("LANGUAGE");
+      tft.setCursor(18, 17);
+      tft.println("LANGUAGE");
     }
     else if (langValue == 2)
     {
-    tft.setCursor(34, 17);
-    tft.println("NYELV");
+      tft.setCursor(34, 17);
+      tft.println("NYELV");
     }
     else if (langValue == 3)
     {
-    tft.setCursor(22, 17);
-    tft.println("SPRACHE");
+      tft.setCursor(22, 17);
+      tft.println("SPRACHE");
     }
     if (menuitem == 1 )
     {
@@ -1030,6 +1310,39 @@ void drawMenu()
       displayMenuItem(menuItem8, 85, true);
     }
   }
+
+  if (page == 4)
+  {
+    tft.setTextSize(2);
+    tft.fillRect(8, 44, 110, 80, BLACK);
+    tft.drawRect(3, 3, 125, 125, WHITE);
+    tft.setTextColor(YELLOW);
+    if (langValue == 1)
+    {
+      tft.setCursor(26, 17);
+      tft.println("R.Delay");
+    }
+    if (langValue == 2)
+    {
+      tft.setCursor(24, 17);
+      tft.println("R.Kesl.");
+    }
+    if (langValue == 3)
+    {
+      tft.setCursor(24, 17);
+      tft.println("R.Verzo");
+    }
+    if (menuitem >= 1 && menuitem <= 29 )
+    {
+      tft.setTextColor(BLACK, WHITE);
+      tft.setTextSize(2);
+      tft.setCursor(40, 65);
+      tft.print(menuitem * 100);
+      tft.setTextColor(WHITE, BLACK);
+      tft.setCursor(29, 85);
+      tft.print("millis");
+    }
+  }
 }
 
 void displayMenuItem(String item, int position, boolean selected)
@@ -1047,6 +1360,4 @@ void displayMenuItem(String item, int position, boolean selected)
     tft.setCursor(8, position);
     tft.print(" " + item);
   }
-  //  tft.setCursor(8, position);
-  //  tft.println(">" + item);
 }
