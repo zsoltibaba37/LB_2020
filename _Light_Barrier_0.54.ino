@@ -1,5 +1,6 @@
 /* Laser Barrier - For Cobot - AutoKobot Ltd.
 
+   v0.65  - Reed relay included, sensOff1 - sensOff4 working all line
    v0.64  - Off Relay Delay - setup integrated. All menu item translated.
    v0.63  - Language manu integrated. Language select is working. A few menu item translated
    v0.62  - Setup menu integrated. Exit working
@@ -21,7 +22,7 @@
    v0.1   - Laser Working, Pushbutton working, RGB Led working -> Red: Light barrier=ON Green: Light barrier=OFF
 */
 
-float version = 0.64;
+float version = 0.65;
 
 // Analog Smooth
 #include "AnalogPin.h"
@@ -89,6 +90,9 @@ int aVal;
 int bVal;
 int swVal;
 
+const int reedRelay = 12; // reed relay input
+int reedState;
+
 // ---------- Menu ----------
 unsigned int menuitem = 1;
 //int frame = 1;
@@ -155,12 +159,13 @@ int relayState = LOW;                 // The Pause relay State
 //#define anaRobot A0                 // Reads the analog input every 250 milliseconds
 AnalogPin INA(A0);                    // Analog input
 unsigned long prevMillis = 0;         // will store last time
-long measureTime = 20;                // milliseconds measure time
+long measureTime = 50;                // milliseconds measure time
 unsigned int valueRobot;              // Raw analog
 unsigned int sensOff1 = 0;            // 1 gate turn off
 unsigned int sensOff2 = 0;            // 2 gate turn off
 unsigned int sensOff3 = 0;            // 3 gate turn off
 unsigned int sensOff4 = 0;            // 4 gate turn off
+bool reSens = false;                   // Sense restart - Initial value = false
 
 // ---------- mcp0 ----------
 #define button 0                // PushButton
@@ -209,7 +214,8 @@ int previous2 = HIGH;       // the previous reading from the input pin
 long time2 = 0;             // the last time the output pin was toggled
 //long debounce1 = 200;       // old 200
 
-// ---------- SETUP ----------
+// -------------------- SETUP --------------------
+// -------------------- SETUP --------------------
 void setup() {
   // -------- EEPROM Write once lang -------
   //EEPROM.write(langAddr, 1);
@@ -303,6 +309,10 @@ void setup() {
   pinSWLast = true;
   pinALast = digitalRead(pinA);
 
+  // Reed relay
+  pinMode (reedRelay, INPUT_PULLUP);
+
+  // Relay Outputs
   pinMode(pauseRelay, OUTPUT);    // 1mp 200mS
   pinMode(contRelay, OUTPUT);     // Allways On except on error
   //digitalWrite(contRelay, HIGH);
@@ -364,13 +374,22 @@ void loop() {
     changeOutMcp2(button, laser);
 
     // --- Main menu ---
-    rotaryMenu(1, 2);
-    sensState = sensSW();
+    reedState = digitalRead(reedRelay);
+    if (reedState == LOW) {
+      rotaryMenu(1, 2);
+      sensState = sensSW();
+    }
 
   }
   else if (error == 0 && sensState == 1) {
-    offSens();
 
+    changeOutMega(buttonN, laserN);
+    changeOutMcp0(button, laser);
+    changeOutMcp1(button, laser);
+    changeOutMcp2(button, laser);
+
+
+    offSens();
     // If 1 turn off sens
     if (sensOff1 != 1)
     {
@@ -397,8 +416,11 @@ void loop() {
 
   if (error == 1) {
     while (sensState == 0) {
-      sensState = sensSW();
-      rotaryMenu(1, 2);
+      reedState = digitalRead(reedRelay);
+      if (reedState == LOW) {
+        sensState = sensSW();
+        rotaryMenu(1, 2);
+      }
       pauseRobot();
       changeOutMega(buttonN, laserN);
       changeOutMcp0(button, laser);
@@ -409,14 +431,16 @@ void loop() {
 
 }
 // ------------------------------------------------------------------------------------------------
-// ------------------------------------------------------------------------------------------------
+// --------------------------- END LOOP -----------------------------------------------------------
 
 // ------------------- VOID Button Mega -------------------
 void changeOutMega(int inPort, int outPort) {
   readingN = !digitalRead(inPort);
   if (readingN == HIGH && previousN == LOW && millis() - timeN > debounce) {
-    if (stateN == LOW)
+    if (stateN == LOW){
       stateN = HIGH;
+      sensOff1 = 0;
+    }
     else
       stateN = LOW;
     timeN = millis();
@@ -455,8 +479,10 @@ void changeOutMcp0(int inPort, int outPort) {
   reading = !mcp0.digitalRead(inPort);
 
   if (reading == HIGH && previous == LOW && millis() - time > debounce) {
-    if (state == LOW)
+    if (state == LOW){
       state = HIGH;
+      sensOff2 = 0;
+    }
     else
       state = LOW;
     time = millis();
@@ -495,8 +521,10 @@ void changeOutMcp1(int inPort, int outPort) {
   reading1 = !mcp1.digitalRead(inPort);
 
   if (reading1 == HIGH && previous1 == LOW && millis() - time1 > debounce) {
-    if (state1 == LOW)
+    if (state1 == LOW){
       state1 = HIGH;
+      sensOff3 = 0;
+    }
     else
       state1 = LOW;
     time1 = millis();
@@ -535,8 +563,10 @@ void changeOutMcp2(int inPort, int outPort) {
   reading2 = !mcp2.digitalRead(inPort);
 
   if (reading2 == HIGH && previous2 == LOW && millis() - time2 > debounce) {
-    if (state2 == LOW)
+    if (state2 == LOW){
       state2 = HIGH;
+      sensOff4 = 0;
+    }
     else
       state2 = LOW;
     time2 = millis();
@@ -620,7 +650,6 @@ void sensMega() {
 // -------------------- Sens Mcp0 --------------------
 void sensMcp0() {
   laserSens = mcp0.digitalRead(photoDiode);
-  //Serial.println(laserSens);
   if (laserSens == 1 ) {
     digitalWrite(laserN, LOW);
     readingN = LOW;
@@ -797,55 +826,99 @@ int offSens() {
     //Serial.println(valueRobot);
 
 
-    // 102.3
-    if ( valueRobot >= 82 && valueRobot <= 123 )
+    // 102.3 - personal = 147
+    if ( valueRobot >= 140 && valueRobot <= 154 )
     {
       sensOff1 = 1;
-      digitalWrite(greenLedNO, HIGH);
+      //      digitalWrite(redLedNO, LOW);
+      //      digitalWrite(greenLedNO, HIGH);
+      //      mcp0.digitalWrite(redLedI, LOW);
+      //      mcp0.digitalWrite(greenLedI, HIGH);
+      stateN = LOW;
+      //reSens = false;
       tft.fillRect(20, 5, 8, 8, GREEN);
-
-      //Serial.println(valueRobot);
     }
 
-    // 205
-    else if ( valueRobot >= 185 && valueRobot <= 225 )
+    // 205 - personal = 255
+    else if ( valueRobot >= 248 && valueRobot <= 262 )
     {
       sensOff2 = 1;
-      mcp0.digitalWrite(greenLedO, HIGH);
+      //      mcp0.digitalWrite(redLedO, LOW);
+      //      mcp0.digitalWrite(greenLedO, HIGH);
+      //      mcp1.digitalWrite(redLedI, LOW);
+      //      mcp1.digitalWrite(greenLedI, HIGH);
+      state = LOW;
+      //reSens = false;
       tft.fillRect(40, 5, 8, 8, GREEN);
     }
 
-    // 307
-    else if ( valueRobot >= 287 && valueRobot <= 327 )
+    // 307 - personal = 350
+    else if ( valueRobot >= 243 && valueRobot <= 357 )
     {
       sensOff3 = 1;
-      mcp1.digitalWrite(greenLedO, HIGH);
+      //      mcp1.digitalWrite(redLedO, LOW);
+      //      mcp1.digitalWrite(greenLedO, HIGH);
+      //      mcp2.digitalWrite(redLedI, LOW);
+      //      mcp2.digitalWrite(greenLedI, HIGH);
+      state1 = LOW;
+      //reSens = false;
       tft.fillRect(60, 5, 8, 8, GREEN);
     }
 
-    // 409
-    else if ( valueRobot >= 389 && valueRobot <= 429 )
+    // 409 - personal = 455
+    else if ( valueRobot >= 447 && valueRobot <= 462 )
     {
       sensOff4 = 1;
-      mcp2.digitalWrite(greenLedO, HIGH);
+      //      mcp2.digitalWrite(redLedO, LOW);
+      //      mcp2.digitalWrite(greenLedO, HIGH);
+      //      digitalWrite(redLedNI, LOW);
+      //      digitalWrite(greenLedNI, HIGH);
+      state2 = LOW;
+      //reSens = false;
       tft.fillRect(80, 5, 8, 8, GREEN);
     }
+//    else if ( valueRobot >= 915 && valueRobot <= 934 ) { // 9V
+//      //      sensOff1 = 0;
+//      //      sensOff2 = 0;
+//      //      sensOff3 = 0;
+//      //      sensOff4 = 0;
+//      reSens = true;
+//    }
 
-    //    else
-    //    {
-    //      sensOff1 = 0;
-    //      digitalWrite(greenLedNO, LOW);
-    //      tft.fillRect(20, 5, 8, 8, BLACK);
-    //      sensOff2 = 0;
-    //      mcp0.digitalWrite(greenLedO, LOW);
-    //      tft.fillRect(40, 5, 8, 8, BLACK);
-    //      sensOff3 = 0;
-    //      mcp1.digitalWrite(greenLedO, LOW);
-    //      tft.fillRect(60, 5, 8, 8, BLACK);
-    //      sensOff4 = 0;
-    //      mcp2.digitalWrite(greenLedO, LOW);
-    //      tft.fillRect(80, 5, 8, 8, BLACK);
-    //    }
+    else
+    {
+      //sensOff1 = 0;
+      //      digitalWrite(redLedNO, HIGH);
+      //      digitalWrite(greenLedNO, LOW);
+      //      mcp0.digitalWrite(redLedI, HIGH);
+      //      mcp0.digitalWrite(greenLedI, LOW);
+
+      tft.fillRect(20, 5, 8, 8, BLACK);
+
+      //sensOff2 = 0;
+      //      mcp0.digitalWrite(redLedO, HIGH);
+      //      mcp0.digitalWrite(greenLedO, LOW);
+      //      mcp1.digitalWrite(redLedI, HIGH);
+      //      mcp1.digitalWrite(greenLedI, LOW);
+
+      tft.fillRect(40, 5, 8, 8, BLACK);
+
+      //sensOff3 = 0;
+      //      mcp1.digitalWrite(redLedO, HIGH);
+      //      mcp1.digitalWrite(greenLedO, LOW);
+      //      mcp2.digitalWrite(redLedI, HIGH);
+      //      mcp2.digitalWrite(greenLedI, LOW);
+
+      tft.fillRect(60, 5, 8, 8, BLACK);
+
+      //sensOff4 = 0;
+      //      mcp2.digitalWrite(redLedO, HIGH);
+      //      mcp2.digitalWrite(greenLedO, LOW);
+      //      digitalWrite(redLedNI, HIGH);
+      //      digitalWrite(greenLedNI, LOW);
+
+      tft.fillRect(80, 5, 8, 8, BLACK);
+    }
   }
 }
 
