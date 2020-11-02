@@ -165,7 +165,6 @@ unsigned int sensOff1 = 0;            // 1 gate turn off
 unsigned int sensOff2 = 0;            // 2 gate turn off
 unsigned int sensOff3 = 0;            // 3 gate turn off
 unsigned int sensOff4 = 0;            // 4 gate turn off
-bool reSens = false;                   // Sense restart - Initial value = false
 
 // ---------- mcp0 ----------
 #define button 0                // PushButton
@@ -192,7 +191,6 @@ int previousN = HIGH;       // the previous reading from the input pin
 long timeN = 0;             // the last time the output pin was toggled
 long debounce = 200;       // old 200
 
-
 // ---------- Button mcp0 ----------
 int state = LOW;           // the current state of the output pin
 int reading;               // the current reading from the input pin
@@ -214,11 +212,11 @@ int previous2 = HIGH;       // the previous reading from the input pin
 long time2 = 0;             // the last time the output pin was toggled
 //long debounce1 = 200;       // old 200
 
-// -------------------- SETUP --------------------
-// -------------------- SETUP --------------------
+// -------------------------------- SETUP --------------------------------
+// -------------------------------- SETUP --------------------------------
 void setup() {
   // -------- EEPROM Write once lang -------
-  //EEPROM.write(langAddr, 1);
+  //EEPROM.write(langAddr, 1);        // Write only once
   //   1 - English    - ENG
   //   2 - Hungarian  - HUN
   //   3 - Deutsche   - DEU
@@ -319,7 +317,6 @@ void setup() {
   pinMode(gripperRelay, OUTPUT);   // Allways On except on error
   //digitalWrite(gripperRelay, HIGH);
 
-
   // ------------------------------------------------------------
 
   // mcp0
@@ -365,7 +362,7 @@ void setup() {
 void loop() {
   // Error State 0 = No Error  1 = Error
   // Sens State  0 = Sens Off  1 = Sense On
-
+  // ############################# When ON the barrier ###############################
   if (error == 0 && sensState == 0) {
 
     changeOutMega(buttonN, laserN);
@@ -381,6 +378,7 @@ void loop() {
     }
 
   }
+  // ################################## Sens ON ######################################
   else if (error == 0 && sensState == 1) {
 
     changeOutMega(buttonN, laserN);
@@ -413,7 +411,7 @@ void loop() {
     digitalWrite(gripperRelay, HIGH);
 
   }
-
+  // ################################## Error State ######################################
   if (error == 1) {
     while (sensState == 0) {
       reedState = digitalRead(reedRelay);
@@ -826,7 +824,7 @@ int offSens() {
     //Serial.println(valueRobot);
 
 
-    // 102.3 - personal = 147
+    // 102.3 - personal value = 147
     if ( valueRobot >= 140 && valueRobot <= 154 )
     {
       sensOff1 = 1;
@@ -835,11 +833,10 @@ int offSens() {
       //      mcp0.digitalWrite(redLedI, LOW);
       //      mcp0.digitalWrite(greenLedI, HIGH);
       stateN = LOW;
-      //reSens = false;
       tft.fillRect(20, 5, 8, 8, GREEN);
     }
 
-    // 205 - personal = 255
+    // 205 - personal value = 255
     else if ( valueRobot >= 248 && valueRobot <= 262 )
     {
       sensOff2 = 1;
@@ -848,11 +845,10 @@ int offSens() {
       //      mcp1.digitalWrite(redLedI, LOW);
       //      mcp1.digitalWrite(greenLedI, HIGH);
       state = LOW;
-      //reSens = false;
       tft.fillRect(40, 5, 8, 8, GREEN);
     }
 
-    // 307 - personal = 350
+    // 307 - personal value = 350
     else if ( valueRobot >= 243 && valueRobot <= 357 )
     {
       sensOff3 = 1;
@@ -861,11 +857,10 @@ int offSens() {
       //      mcp2.digitalWrite(redLedI, LOW);
       //      mcp2.digitalWrite(greenLedI, HIGH);
       state1 = LOW;
-      //reSens = false;
       tft.fillRect(60, 5, 8, 8, GREEN);
     }
 
-    // 409 - personal = 455
+    // 409 - personal value = 455
     else if ( valueRobot >= 447 && valueRobot <= 462 )
     {
       sensOff4 = 1;
@@ -874,7 +869,6 @@ int offSens() {
       //      digitalWrite(redLedNI, LOW);
       //      digitalWrite(greenLedNI, HIGH);
       state2 = LOW;
-      //reSens = false;
       tft.fillRect(80, 5, 8, 8, GREEN);
     }
 //    else if ( valueRobot >= 915 && valueRobot <= 934 ) { // 9V
@@ -882,7 +876,6 @@ int offSens() {
 //      //      sensOff2 = 0;
 //      //      sensOff3 = 0;
 //      //      sensOff4 = 0;
-//      reSens = true;
 //    }
 
     else
@@ -925,6 +918,7 @@ int offSens() {
 // -------------------- Rotary Button --------------------
 int sensSW() {
   swVal = !digitalRead(pinSW);
+  // ########################### Activate light barrier ################################
   if (pinSWLast == true ) {
     if (swVal == LOW  && page == 1 && menuitem == 1) {
       ++sens;
@@ -970,6 +964,7 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
+  // ################################## goto page 2 ######################################
   if (pinSWLast == true ) {
     if (swVal == LOW && page == 1 && menuitem == 2 ) { // goto page 2
       ++page;
@@ -986,6 +981,7 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
+  // ################################# goto page 3 #####################################
   if (pinSWLast == true ) {
     if (swVal == LOW && page == 2 && menuitem == 1 ) { // goto page 3
       ++page;
@@ -1003,7 +999,7 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
-
+  // ################################## goto page 4 ####################################
   if (pinSWLast == true ) {
     if (swVal == LOW && page == 2 && menuitem == 2 ) { // goto page 4
       page = 4;
@@ -1016,7 +1012,7 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
-
+  // ################################ Exit to page 1 #######################################
   if (pinSWLast == true ) {
     if (swVal == LOW && page == 2 && menuitem == 3 ) { // Exit to page 1
       --page;
@@ -1033,6 +1029,7 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
+  // ################################## ENG Selected ###################################
   if (pinSWLast == true ) {
     if (swVal == LOW && page == 3 && menuitem == 1 ) { // ENG Selected
       newLangValue = 1;
@@ -1054,6 +1051,7 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
+  // ################################# HUN Selected #####################################
   if (pinSWLast == true ) {
     if (swVal == LOW && page == 3 && menuitem == 2 ) { // HUN Selected
       newLangValue = 2;
@@ -1075,6 +1073,7 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
+  // ############################### DEU Selected ######################################
   if (pinSWLast == true ) {
     if (swVal == LOW && page == 3 && menuitem == 3 ) { // DEU Selected
       newLangValue = 3;
@@ -1096,7 +1095,7 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
-  // ---- Relay Delay
+  // ########################## Exit to page 2 from page 4 ################################
   if (pinSWLast == true ) {
     if (swVal == LOW && page == 4  ) {                 // Exit to page 2 from page 4
       NewOffTimeValue = menuitem;
@@ -1115,7 +1114,7 @@ int sensSW() {
   if (swVal == HIGH) {
     pinSWLast = true;
   }
-
+  // ################################# END ############################################
   return sens;
 }
 
