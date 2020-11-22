@@ -1,5 +1,6 @@
 /* Laser Barrier - For Cobot - AutoKobot Ltd.
 
+   v0.66  - Output to robot tested, working properly.
    v0.65  - Reed relay included, sensOff1 - sensOff4 working all line
    v0.64  - Off Relay Delay - setup integrated. All menu item translated.
    v0.63  - Language manu integrated. Language select is working. A few menu item translated
@@ -22,7 +23,7 @@
    v0.1   - Laser Working, Pushbutton working, RGB Led working -> Red: Light barrier=ON Green: Light barrier=OFF
 */
 
-float version = 0.65;
+float version = 0.66;
 
 // Analog Smooth
 #include "AnalogPin.h"
