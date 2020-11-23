@@ -151,6 +151,7 @@ long OnTime = 200;                    // milliseconds of on-time
 long OffTimeValue;
 long NewOffTimeValue;
 long OffTime;                         // milliseconds of off-time
+long BackOnTime = 200;                // Laser barrier On, after robot turn off one of the line
 unsigned int timeAddr = 1;            // OffTime Memory Address
 //EEPROM.write(timeAddr, 8);          // Write once
 
@@ -437,6 +438,13 @@ void changeOutMega(int inPort, int outPort) {
   readingN = !digitalRead(inPort);
   if (readingN == HIGH && previousN == LOW && millis() - timeN > debounce) {
     if (stateN == LOW){
+      if (sensOff1 == 1){
+        digitalWrite(pauseRelay, HIGH);
+        tft.fillRect(60, 5, 8, 8, BLUE);
+        delay(BackOnTime);
+        digitalWrite(pauseRelay, LOW);
+        tft.fillRect(60, 5, 8, 8, BLACK);
+      }      
       stateN = HIGH;
       sensOff1 = 0;
     }
@@ -479,6 +487,13 @@ void changeOutMcp0(int inPort, int outPort) {
 
   if (reading == HIGH && previous == LOW && millis() - time > debounce) {
     if (state == LOW){
+      if (sensOff2 == 1){
+        digitalWrite(pauseRelay, HIGH);
+        tft.fillRect(60, 5, 8, 8, BLUE);
+        delay(BackOnTime);
+        digitalWrite(pauseRelay, LOW);
+        tft.fillRect(60, 5, 8, 8, BLACK);
+      } 
       state = HIGH;
       sensOff2 = 0;
     }
@@ -521,6 +536,13 @@ void changeOutMcp1(int inPort, int outPort) {
 
   if (reading1 == HIGH && previous1 == LOW && millis() - time1 > debounce) {
     if (state1 == LOW){
+      if (sensOff3 == 1){
+        digitalWrite(pauseRelay, HIGH);
+        tft.fillRect(60, 5, 8, 8, BLUE);
+        delay(BackOnTime);
+        digitalWrite(pauseRelay, LOW);
+        tft.fillRect(60, 5, 8, 8, BLACK);
+      }      
       state1 = HIGH;
       sensOff3 = 0;
     }
@@ -563,6 +585,13 @@ void changeOutMcp2(int inPort, int outPort) {
 
   if (reading2 == HIGH && previous2 == LOW && millis() - time2 > debounce) {
     if (state2 == LOW){
+      if (sensOff4 == 1){
+        digitalWrite(pauseRelay, HIGH);
+        tft.fillRect(60, 5, 8, 8, BLUE);
+        delay(BackOnTime);
+        digitalWrite(pauseRelay, LOW);
+        tft.fillRect(60, 5, 8, 8, BLACK);
+      }
       state2 = HIGH;
       sensOff4 = 0;
     }
