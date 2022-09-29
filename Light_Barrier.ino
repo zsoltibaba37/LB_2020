@@ -1,5 +1,5 @@
 /* Laser Barrier
-/*
+
    v0.66  - Output to robot tested, working properly.
    v0.65  - Reed relay included, sensOff1 - sensOff4 working all line
    v0.64  - Off Relay Delay - setup integrated. All menu item translated.
